@@ -1,0 +1,27 @@
+# Flutter
+.dart_tool/
+.packages
+build/
+*.iml
+.idea/
+.vscode/
+*.lock
+*.log
+*.key
+*.jks
+
+# Android
+android/.gradle/
+android/app/build/
+android/build/
+local.properties
+
+# iOS
+ios/Pods/
+ios/.symlinks/
+ios/Flutter/Flutter.framework
+ios/Flutter/Flutter.podspec
+
+# Assets
+assets/images/
+assets/icons/
