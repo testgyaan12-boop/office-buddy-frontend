@@ -29,7 +29,7 @@ class CompanyModel {
         endDate: json['endDate'] != null
             ? DateTime.parse(json['endDate'] as String)
             : null,
-        isCurrent: json['isCurrent'] as bool? ?? false,
+        isCurrent: json['isCurrent'] as bool? ?? json['current'] as bool? ?? false,
         documentCount: json['documentCount'] as int? ?? 0,
       );
 

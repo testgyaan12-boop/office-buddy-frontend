@@ -874,7 +874,7 @@ class _ProfileSheetState extends ConsumerState<_ProfileSheet> {
     final role = c['role'] as String? ?? '';
     final startDate = c['startDate'] as String?;
     final endDate = c['endDate'] as String?;
-    final isCurrent = c['isCurrent'] as bool? ?? false;
+    final isCurrent = c['isCurrent'] as bool? ?? c['current'] as bool? ?? false;
     String period = '';
     if (startDate != null) {
       final s = _formatDate(startDate);

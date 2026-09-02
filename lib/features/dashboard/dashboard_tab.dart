@@ -66,16 +66,6 @@ class _DashboardContent extends StatelessWidget {
           children: [
             Expanded(
               child: _StatItem(
-                icon: Icons.description,
-                value: '${stats.totalDocuments}',
-                label: 'Documents',
-                color: AppColors.primary,
-                onTap: () => context.push('/search'),
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: _StatItem(
                 icon: Icons.business,
                 value: '${stats.totalCompanies}',
                 label: 'Companies',
@@ -90,6 +80,16 @@ class _DashboardContent extends StatelessWidget {
                 value: '${stats.experienceYears}y',
                 label: 'Experience',
                 color: AppColors.success,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: _StatItem(
+                icon: Icons.description,
+                value: '${stats.totalDocuments}',
+                label: 'Documents',
+                color: AppColors.primary,
+                onTap: () => context.push('/search'),
               ),
             ),
             const SizedBox(width: 8),
