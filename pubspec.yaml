@@ -43,6 +43,7 @@ dev_dependencies:
   json_serializable: ^6.7.1
   freezed: ^2.4.6
   mockito: ^5.4.4
+  flutter_launcher_icons: ^0.14.3
 
 flutter:
   uses-material-design: true

@@ -1,0 +1,7 @@
+flutter_launcher_icons:
+  android: "launcher_icon"
+  ios: false
+  image_path: "assets/icons/buddy.png"
+  min_sdk_android: 21
+  web:
+    generate: false
