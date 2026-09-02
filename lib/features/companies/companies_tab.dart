@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -5,15 +6,34 @@ import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_strings.dart';
 import '../../shared/widgets/empty_state.dart';
 import '../../shared/widgets/error_state.dart';
+import '../../shared/widgets/glass_card.dart';
 import '../../shared/widgets/loading_shimmer.dart';
 import 'companies_provider.dart';
 import 'models/company_model.dart';
 
-class CompaniesTab extends ConsumerWidget {
+const _indigo = Color(0xFF6366F1);
+
+class CompaniesTab extends ConsumerStatefulWidget {
   const CompaniesTab({super.key});
+  @override
+  ConsumerState<CompaniesTab> createState() => _CompaniesTabState();
+}
+
+class _CompaniesTabState extends ConsumerState<CompaniesTab> {
+  final _searchController = TextEditingController();
+  String _query = '';
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  void dispose() { _searchController.dispose(); super.dispose(); }
+
+  List<CompanyModel> _filtered(List<CompanyModel> list) {
+    if (_query.isEmpty) return list;
+    final q = _query.toLowerCase();
+    return list.where((c) => c.name.toLowerCase().contains(q) || c.role.toLowerCase().contains(q)).toList();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final state = ref.watch(companiesProvider);
     if (state.isLoading) return const LoadingShimmer();
     if (state.error != null) {
@@ -31,28 +51,75 @@ class CompaniesTab extends ConsumerWidget {
           onPressed: () => context.push('/companies/add'),
           icon: const Icon(Icons.add),
           label: const Text(AppStrings.addCompany),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: AppColors.primary,
-            foregroundColor: Colors.white,
-          ),
+          style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white),
         ),
       );
     }
-    return RefreshIndicator(
-      onRefresh: () => ref.read(companiesProvider.notifier).loadCompanies(),
-      child: ListView(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        children: [
-          ...state.companies.map(
-            (company) => _CompanyCard(
-              company: company,
-              onTap: () => context.push('/companies/${company.id}'),
-            ),
+
+    final filtered = _filtered(state.companies);
+
+    return Stack(
+      children: [
+        const GlassMeshBackground(),
+        RefreshIndicator(
+          color: _indigo,
+          onRefresh: () => ref.read(companiesProvider.notifier).loadCompanies(),
+          child: ListView(
+            padding: const EdgeInsets.only(bottom: 16),
+            children: [
+              // Glass search
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(30),
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+                    child: TextField(
+                      controller: _searchController,
+                      onChanged: (v) => setState(() => _query = v),
+                      style: const TextStyle(fontSize: 14, color: Color(0xFF0F172A), fontWeight: FontWeight.w500),
+                      decoration: InputDecoration(
+                        hintText: 'Search companies, roles...',
+                        hintStyle: TextStyle(color: Colors.black.withValues(alpha: 0.35), fontSize: 13, fontWeight: FontWeight.w500),
+                        prefixIcon: Container(
+                          margin: const EdgeInsets.all(6),
+                          padding: const EdgeInsets.all(7),
+                          decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.65), shape: BoxShape.circle, border: Border.all(color: Colors.white.withValues(alpha: 0.45))),
+                          child: const Icon(Icons.search_rounded, color: _indigo, size: 16),
+                        ),
+                        suffixIcon: _query.isNotEmpty
+                            ? IconButton(icon: const Icon(Icons.clear_rounded, size: 18, color: Colors.black45), onPressed: () { _searchController.clear(); setState(() => _query = ''); })
+                            : null,
+                        filled: true,
+                        fillColor: Colors.white.withValues(alpha: 0.62),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(30), borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.40))),
+                        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(30), borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.40))),
+                        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(30), borderSide: const BorderSide(color: _indigo, width: 1.2)),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              if (filtered.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 40),
+                  child: Center(
+                    child: GlassCard(
+                      blur: 12, opacity: 0.62, borderRadius: BorderRadius.circular(14),
+                      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                      child: Text(_query.isNotEmpty ? 'No companies match "$_query"' : 'No companies', style: const TextStyle(color: Colors.black54, fontSize: 13)),
+                    ),
+                  ),
+                )
+              else
+                ...filtered.map((c) => _CompanyCard(company: c, onTap: () => context.push('/companies/${c.id}'))),
+              const SizedBox(height: 8),
+              const _CompanyBanner(),
+            ],
           ),
-          const SizedBox(height: 8),
-          const _CompanyBanner(),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
