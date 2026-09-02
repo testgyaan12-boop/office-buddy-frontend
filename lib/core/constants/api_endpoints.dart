@@ -1,9 +1,18 @@
-import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform;
+import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform, kReleaseMode;
 
 class ApiEndpoints {
   ApiEndpoints._();
 
+  // Allow override via --dart-define=API_BASE_URL=https://...
+  static const String _envUrl = String.fromEnvironment('API_BASE_URL');
+
   static String get baseUrl {
+    if (_envUrl.isNotEmpty) return _envUrl;
+    // Release APK/AAB (and web release) → Render backend
+    if (kReleaseMode) {
+      return 'https://office-buddy-backend.onrender.com/api/v1';
+    }
+    // Debug / Profile → local dev
     if (defaultTargetPlatform == TargetPlatform.android) {
       return 'http://10.0.2.2:8080/api/v1';
     }
