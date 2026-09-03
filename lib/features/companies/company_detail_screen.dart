@@ -71,6 +71,8 @@ class _CompanyDetailScreenState extends ConsumerState<CompanyDetailScreen>
                     ? null
                     : () async {
                         await ref.read(companiesProvider.notifier).deleteCompany(widget.companyId);
+                        // Cascade: timeline events for this company are soft-deleted on backend
+                        try { await ref.read(timelineProvider.notifier).loadTimeline(); } catch (_) {}
                         if (ref.read(companiesProvider).error == null && ctx.mounted) {
                           Navigator.pop(ctx);
                           if (mounted) context.pop();
