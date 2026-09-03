@@ -476,7 +476,7 @@ class _GoalCard extends StatelessWidget {
   }
 }
 
-class _GoalFormSheet extends StatefulWidget {
+class _GoalFormSheet extends ConsumerStatefulWidget {
   final String? initialTitle;
   final String? initialDescription;
   final String? initialTargetDate;
@@ -484,6 +484,7 @@ class _GoalFormSheet extends StatefulWidget {
   final void Function(String title, String? description, String targetDate, String category) onSave;
 
   const _GoalFormSheet({
+    super.key,
     this.initialTitle,
     this.initialDescription,
     this.initialTargetDate,
@@ -492,7 +493,7 @@ class _GoalFormSheet extends StatefulWidget {
   });
 
   @override
-  State<_GoalFormSheet> createState() => _GoalFormSheetState();
+  ConsumerState<_GoalFormSheet> createState() => _GoalFormSheetState();
 }
 
 class _GoalFormSheetState extends ConsumerState<_GoalFormSheet> {

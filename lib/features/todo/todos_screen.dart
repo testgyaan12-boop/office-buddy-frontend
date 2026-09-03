@@ -582,7 +582,7 @@ class _TodoItem extends StatelessWidget {
   }
 }
 
-class _TodoFormSheet extends StatefulWidget {
+class _TodoFormSheet extends ConsumerStatefulWidget {
   final String? initialTitle;
   final String? initialContent;
   final String? initialType;
@@ -590,6 +590,7 @@ class _TodoFormSheet extends StatefulWidget {
   final void Function(String title, String? content, String type, String? dueDate) onSave;
 
   const _TodoFormSheet({
+    super.key,
     this.initialTitle,
     this.initialContent,
     this.initialType,
@@ -598,7 +599,7 @@ class _TodoFormSheet extends StatefulWidget {
   });
 
   @override
-  State<_TodoFormSheet> createState() => _TodoFormSheetState();
+  ConsumerState<_TodoFormSheet> createState() => _TodoFormSheetState();
 }
 
 class _TodoFormSheetState extends ConsumerState<_TodoFormSheet> {

@@ -98,6 +98,24 @@ class JobSwitchNotifier extends StateNotifier<JobSwitchState> {
     state = state.copyWith(selectedCounts: m);
   }
 
+  Future<void> generateDefaultPack() async {
+    state = state.copyWith(isGenerating: true, error: null, status: 'Generating...');
+    try {
+      final response = await _apiClient.post(ApiEndpoints.jobSwitchGenerate);
+      state = JobSwitchState(
+        isGenerating: false,
+        downloadUrl: response.data['downloadUrl'] as String?,
+        packId: response.data['id'] as String?,
+        status: 'Ready',
+        selectedCounts: state.selectedCounts,
+        downloadDetails: state.downloadDetails,
+      );
+      await fetchDownloadDetails();
+    } catch (e) {
+      state = state.copyWith(isGenerating: false, error: 'Failed to generate pack', status: 'Failed');
+    }
+  }
+
   Future<void> generatePack() async {
     final counts = state.selectedCounts;
     final hasAny = counts.values.any((v) => v > 0);
@@ -107,7 +125,6 @@ class JobSwitchNotifier extends StateNotifier<JobSwitchState> {
     }
     state = state.copyWith(isGenerating: true, error: null, status: 'Generating...');
     try {
-      // Convert to includeCounts map for backend (only >0)
       final includeCounts = <String, int>{};
       counts.forEach((k, v) {
         if (v > 0) includeCounts[k] = v;
@@ -216,6 +233,78 @@ class _JobSwitchScreenState extends ConsumerState<JobSwitchScreen> {
     }
   }
 
+  void _showCustomPackPopup(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) => Consumer(
+        builder: (ctx2, ref2, _) {
+          final selState = ref2.watch(jobSwitchProvider);
+          return Padding(
+            padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom, left: 20, right: 20, top: 20),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(2)))),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      const Text('Custom Pack', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+                      const Spacer(),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(color: const Color(0xFFF59E0B).withValues(alpha: 0.12), borderRadius: BorderRadius.circular(12)),
+                        child: Text('${selState.selectedCounts.values.where((v) => v > 0).length} folders • ${selState.selectedCounts.values.fold<int>(0, (a, b) => a + b)} files', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFFB45309))),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  const Text('Choose konsa folder chahiye and kitna', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                  const SizedBox(height: 16),
+                  _FolderSelector(folder: 'Experience Certificates', types: const ['CERTIFICATE', 'RELIEVING_LETTER'], icon: Icons.verified),
+                  _FolderSelector(folder: 'Payslips', types: const ['PAYSLIP'], icon: Icons.receipt_long),
+                  _FolderSelector(folder: 'Joining Letters', types: const ['JOINING_LETTER'], icon: Icons.how_to_reg),
+                  _FolderSelector(folder: 'Offer Letters', types: const ['OFFER_LETTER'], icon: Icons.card_membership),
+                  _FolderSelector(folder: 'Increment Letters', types: const ['INCREMENT_LETTER'], icon: Icons.trending_up),
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(color: const Color(0xFFEEF2FF), borderRadius: BorderRadius.circular(12), border: Border.all(color: const Color(0xFF6366F1).withValues(alpha: 0.15))),
+                    child: Row(children: [const Icon(Icons.info_outline, size: 16, color: Color(0xFF6366F1)), const SizedBox(width: 8), Expanded(child: Text('Free: 3 downloads • Paid unlocks unlimited.', style: TextStyle(fontSize: 11, color: Colors.black.withValues(alpha: 0.60))))]),
+                  ),
+                  const SizedBox(height: 20),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: selState.isGenerating
+                          ? null
+                          : () async {
+                              await ref2.read(jobSwitchProvider.notifier).generatePack();
+                              if (ctx.mounted) Navigator.pop(ctx);
+                              if (selState.downloadUrl != null && context.mounted) {
+                                // keep on main screen to show download button
+                              }
+                            },
+                      style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 14)),
+                      child: selState.isGenerating
+                          ? const Row(mainAxisAlignment: MainAxisAlignment.center, children: [SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)), SizedBox(width: 12), Text('Generating...')])
+                          : const Text('Generate Custom Pack & Download'),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(jobSwitchProvider);
@@ -246,41 +335,14 @@ class _JobSwitchScreenState extends ConsumerState<JobSwitchScreen> {
               ),
             ),
             const SizedBox(height: 24),
-            Row(
-              children: [
-                const Text('Customize Pack', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
-                const Spacer(),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(color: const Color(0xFFF59E0B).withValues(alpha: 0.12), borderRadius: BorderRadius.circular(12)),
-                  child: Text('${state.selectedCounts.values.where((v) => v > 0).length} folders • ${state.selectedCounts.values.fold<int>(0, (a, b) => a + b)} files', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFFB45309))),
-                ),
-              ],
-            ),
-            const SizedBox(height: 4),
-            const Text('Select konsa folder chahiye and kitna (count)', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-            const SizedBox(height: 12),
-            _FolderSelector(
-              folder: 'Experience Certificates',
-              types: const ['CERTIFICATE', 'RELIEVING_LETTER'],
-              icon: Icons.verified,
-            ),
-            _FolderSelector(folder: 'Payslips', types: const ['PAYSLIP'], icon: Icons.receipt_long),
-            _FolderSelector(folder: 'Joining Letters', types: const ['JOINING_LETTER'], icon: Icons.how_to_reg),
-            _FolderSelector(folder: 'Offer Letters', types: const ['OFFER_LETTER'], icon: Icons.card_membership),
-            _FolderSelector(folder: 'Increment Letters', types: const ['INCREMENT_LETTER'], icon: Icons.trending_up),
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(color: const Color(0xFFEEF2FF), borderRadius: BorderRadius.circular(12), border: Border.all(color: const Color(0xFF6366F1).withValues(alpha: 0.15))),
-              child: Row(
-                children: [
-                  const Icon(Icons.info_outline, size: 16, color: Color(0xFF6366F1)),
-                  const SizedBox(width: 8),
-                  Expanded(child: Text('Free: 3 downloads • Paid unlocks unlimited. Table below tracks every download.', style: TextStyle(fontSize: 11, color: Colors.black.withValues(alpha: 0.60)))),
-                ],
-              ),
-            ),
+            const Text('This pack includes:', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+            const SizedBox(height: 16),
+            _IncludeItem(icon: Icons.verified, label: 'Experience Certificates'),
+            _IncludeItem(icon: Icons.exit_to_app, label: 'Relieving Letters'),
+            _IncludeItem(icon: Icons.how_to_reg, label: 'Joining Letters'),
+            _IncludeItem(icon: Icons.card_membership, label: 'Offer Letters'),
+            _IncludeItem(icon: Icons.trending_up, label: 'Increment Letters'),
+            _IncludeItem(icon: Icons.receipt_long, label: 'Last 3 Months Payslips'),
             const SizedBox(height: 24),
             if (state.error != null)
               Padding(
@@ -294,11 +356,21 @@ class _JobSwitchScreenState extends ConsumerState<JobSwitchScreen> {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: state.isGenerating ? null : () => ref.read(jobSwitchProvider.notifier).generatePack(),
+                onPressed: state.isGenerating ? null : () => ref.read(jobSwitchProvider.notifier).generateDefaultPack(),
                 style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 16)),
                 child: state.isGenerating
                     ? const Row(mainAxisAlignment: MainAxisAlignment.center, children: [SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation(Colors.white))), SizedBox(width: 12), Text('Generating...')])
-                    : const Text('Generate Custom Pack'),
+                    : const Text('Generate Pack'),
+              ),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: state.isGenerating ? null : () => _showCustomPackPopup(context),
+                icon: const Icon(Icons.tune_rounded, size: 18),
+                label: const Text('Custom Pack'),
+                style: OutlinedButton.styleFrom(foregroundColor: AppColors.primary, side: const BorderSide(color: AppColors.primary), padding: const EdgeInsets.symmetric(vertical: 14)),
               ),
             ),
             if (state.downloadUrl != null) ...[
@@ -402,6 +474,29 @@ class _FolderSelector extends ConsumerWidget {
               const Text('Off', style: TextStyle(fontSize: 11, color: Colors.grey)),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _IncludeItem extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  const _IncludeItem({required this.icon, required this.label});
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(color: AppColors.success.withValues(alpha: 0.1), shape: BoxShape.circle),
+            child: Icon(icon, color: AppColors.success, size: 18),
+          ),
+          const SizedBox(width: 12),
+          Text(label, style: const TextStyle(fontSize: 15)),
+        ],
       ),
     );
   }
