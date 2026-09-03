@@ -36,8 +36,8 @@ class CompanyModel {
   Map<String, dynamic> toJson() => {
         'name': name,
         'role': role,
-        'startDate': startDate.toIso8601String(),
-        'endDate': endDate?.toIso8601String(),
+        'startDate': "${startDate.year.toString().padLeft(4,'0')}-${startDate.month.toString().padLeft(2,'0')}-${startDate.day.toString().padLeft(2,'0')}",
+        'endDate': endDate != null ? "${endDate!.year.toString().padLeft(4,'0')}-${endDate!.month.toString().padLeft(2,'0')}-${endDate!.day.toString().padLeft(2,'0')}" : null,
         'isCurrent': isCurrent,
       };
 

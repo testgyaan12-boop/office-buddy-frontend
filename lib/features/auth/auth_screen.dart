@@ -63,6 +63,17 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
         });
         setState(() => _page = AuthPage.login);
       }
+      if (next.status == AuthStatus.unauthenticated && next.verifyEmailMessage != null && _page == AuthPage.verifyEmail && next.verifyEmailMessage!.toLowerCase().contains('verified successfully')) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(next.verifyEmailMessage!),
+              backgroundColor: AppColors.success,
+            ),
+          );
+        });
+        setState(() => _page = AuthPage.login);
+      }
     });
 
     return Scaffold(

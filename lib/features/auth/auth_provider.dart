@@ -78,7 +78,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       );
     } catch (e) {
       final msg = _extractError(e);
-      if (msg.contains('verify your email')) {
+      if (msg.toLowerCase().contains('verify')) {
         state = AuthState(
           status: AuthStatus.emailUnverified,
           error: msg,
@@ -277,14 +277,30 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 
   String _extractError(Object e) {
-    final str = e.toString();
     try {
       if (e is DioException && e.response?.data is Map) {
         final data = e.response!.data as Map;
-        if (data['message'] is String) return data['message'] as String;
+        if (data['message'] is String && (data['message'] as String).isNotEmpty) return data['message'] as String;
+        if (data['error'] is String && (data['error'] as String).isNotEmpty) return data['error'] as String;
+        if (data['errors'] is String && (data['errors'] as String).isNotEmpty) {
+          // Backend sends errors as "{field=msg, ...}" — show first msg already in 'message', keep fallback
+          return data['errors'] as String;
+        }
+        // Handle errors as Map (rare)
+        if (data['errors'] is Map && (data['errors'] as Map).isNotEmpty) {
+          return (data['errors'] as Map).values.first.toString();
+        }
+      }
+      if (e is DioException && e.response?.data is String) {
+        final s = e.response!.data as String;
+        if (s.isNotEmpty) return s;
       }
     } catch (_) {}
-    if (str.contains('message')) return str;
+    final str = e.toString();
+    final match = RegExp(r'"message"\s*:\s*"([^"]+)"').firstMatch(str);
+    if (match != null) return match.group(1)!;
+    final errMatch = RegExp(r'"error"\s*:\s*"([^"]+)"').firstMatch(str);
+    if (errMatch != null) return errMatch.group(1)!;
     return 'Something went wrong. Please try again.';
   }
 }
