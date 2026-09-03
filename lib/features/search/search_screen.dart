@@ -206,6 +206,8 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
             child: TextField(
               controller: _searchController,
+              keyboardType: TextInputType.text,
+              textInputAction: TextInputAction.search,
               decoration: InputDecoration(
                 hintText: 'Search by title, company...',
                 filled: true,
@@ -223,7 +225,8 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                         icon: const Icon(Icons.clear, size: 18),
                         onPressed: () {
                           _searchController.clear();
-                          ref.read(searchProvider.notifier).search('');
+                          setState(() {});
+                          _performSearch();
                         },
                       )
                     : null,
@@ -241,11 +244,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
               onSubmitted: (_) => _performSearch(),
               onChanged: (v) {
                 setState(() {});
-                if (v.isEmpty && _selectedType.isEmpty) {
-                  ref.read(searchProvider.notifier).search('');
-                } else {
-                  _performSearch();
-                }
+                _performSearch();
               },
             ),
           ),

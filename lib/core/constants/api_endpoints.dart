@@ -42,6 +42,9 @@ class ApiEndpoints {
 
   static const String jobSwitchGenerate = '/job-switch/generate';
   static const String jobSwitchStatus = '/job-switch/status/';
+  static const String jobSwitchDownload = '/job-switch/download/';
+  static const String jobSwitchPackDownloadDetails = '/job-switch/pack-download-details';
+  static const String jobSwitchPackDownloadDetailsAll = '/job-switch/pack-download-details/all';
 
   static const String dashboardStats = '/dashboard/stats';
 
