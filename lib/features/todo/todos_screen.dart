@@ -118,26 +118,34 @@ class _TodosScreenState extends ConsumerState<TodosScreen> {
   void _confirmDelete(TodoModel todo) {
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Delete'),
-        content: Text('Delete "${todo.title}"?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              ref.read(todoProvider.notifier).deleteTodo(todo.id);
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.error,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('Delete'),
-          ),
-        ],
+      barrierDismissible: false,
+      builder: (ctx) => Consumer(
+        builder: (ctx2, ref2, _) {
+          final saving = ref2.watch(todoProvider).savingId == todo.id;
+          return AlertDialog(
+            title: const Text('Delete'),
+            content: Text('Delete "${todo.title}"?'),
+            actions: [
+              TextButton(
+                onPressed: saving ? null : () => Navigator.pop(ctx),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                onPressed: saving
+                    ? null
+                    : () async {
+                        await ref.read(todoProvider.notifier).deleteTodo(todo.id);
+                        if (ctx.mounted) Navigator.pop(ctx);
+                      },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.error,
+                  foregroundColor: Colors.white,
+                ),
+                child: saving ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Text('Delete'),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -449,23 +457,28 @@ class _TodoItem extends StatelessWidget {
               Container(width: 4, height: 80, color: _typeColor),
               const SizedBox(width: 12),
               if (todo.isTask)
-                GestureDetector(
-                  onTap: onToggle,
-                  child: Container(
-                    width: 26,
-                    height: 26,
-                    decoration: BoxDecoration(
-                      color: todo.completed ? AppColors.success : Colors.transparent,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color: todo.completed ? AppColors.success : AppColors.textLight,
-                        width: 1.5,
-                      ),
-                    ),
-                    child: todo.completed
-                        ? const Icon(Icons.check, color: Colors.white, size: 16)
-                        : null,
-                  ),
+                Consumer(
+                  builder: (context, ref, _) {
+                    final saving = ref.watch(todoProvider).savingId == todo.id;
+                    return saving
+                        ? const SizedBox(width: 26, height: 26, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary))
+                        : GestureDetector(
+                            onTap: onToggle,
+                            child: Container(
+                              width: 26,
+                              height: 26,
+                              decoration: BoxDecoration(
+                                color: todo.completed ? AppColors.success : Colors.transparent,
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: todo.completed ? AppColors.success : AppColors.textLight,
+                                  width: 1.5,
+                                ),
+                              ),
+                              child: todo.completed ? const Icon(Icons.check, color: Colors.white, size: 16) : null,
+                            ),
+                          );
+                  },
                 )
               else
                 Container(
@@ -501,11 +514,18 @@ class _TodoItem extends StatelessWidget {
                             ),
                           ),
                           const Spacer(),
-                          IconButton(
-                            icon: const Icon(Icons.delete_outline, color: AppColors.error, size: 18),
-                            onPressed: onDelete,
-                            padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(),
+                          Consumer(
+                            builder: (context, ref, _) {
+                              final saving = ref.watch(todoProvider).savingId == todo.id;
+                              return saving
+                                  ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.error))
+                                  : IconButton(
+                                      icon: const Icon(Icons.delete_outline, color: AppColors.error, size: 18),
+                                      onPressed: onDelete,
+                                      padding: EdgeInsets.zero,
+                                      constraints: const BoxConstraints(),
+                                    );
+                            },
                           ),
                         ],
                       ),
@@ -581,7 +601,7 @@ class _TodoFormSheet extends StatefulWidget {
   State<_TodoFormSheet> createState() => _TodoFormSheetState();
 }
 
-class _TodoFormSheetState extends State<_TodoFormSheet> {
+class _TodoFormSheetState extends ConsumerState<_TodoFormSheet> {
   late TextEditingController _titleController;
   late TextEditingController _contentController;
   late String _type;
@@ -704,26 +724,37 @@ class _TodoFormSheetState extends State<_TodoFormSheet> {
             ],
           ),
           const SizedBox(height: 20),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: () {
-                if (_titleController.text.trim().isEmpty) return;
-                widget.onSave(
-                  _titleController.text.trim(),
-                  _contentController.text.trim().isEmpty ? null : _contentController.text.trim(),
-                  _type,
-                  _dueDate?.toIso8601String().split('T')[0],
-                );
-                Navigator.pop(context);
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 14),
-              ),
-              child: const Text('Save'),
-            ),
+          Consumer(
+            builder: (context, ref, _) {
+              final isSaving = ref.watch(todoProvider).savingId != null;
+              return SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: isSaving
+                      ? null
+                      : () {
+                          if (_titleController.text.trim().isEmpty) return;
+                          widget.onSave(
+                            _titleController.text.trim(),
+                            _contentController.text.trim().isEmpty ? null : _contentController.text.trim(),
+                            _type,
+                            _dueDate?.toIso8601String().split('T')[0],
+                          );
+                          Future.delayed(const Duration(milliseconds: 400), () {
+                            if (context.mounted && ref.read(todoProvider).savingId == null) Navigator.pop(context);
+                          });
+                        },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                  ),
+                  child: isSaving
+                      ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                      : const Text('Save'),
+                ),
+              );
+            },
           ),
           const SizedBox(height: 20),
         ],

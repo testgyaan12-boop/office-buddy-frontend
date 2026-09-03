@@ -9,22 +9,26 @@ class DocumentsState {
   final bool isLoading;
   final String? error;
   final List<DocumentModel> documents;
+  final String? deletingId;
 
   const DocumentsState({
     this.isLoading = false,
     this.error,
     this.documents = const [],
+    this.deletingId,
   });
 
   DocumentsState copyWith({
     bool? isLoading,
     String? error,
     List<DocumentModel>? documents,
+    String? deletingId,
   }) {
     return DocumentsState(
       isLoading: isLoading ?? this.isLoading,
       error: error,
       documents: documents ?? this.documents,
+      deletingId: deletingId,
     );
   }
 }
@@ -81,13 +85,15 @@ class DocumentsNotifier extends StateNotifier<DocumentsState> {
   }
 
   Future<void> deleteDocument(String id) async {
+    state = state.copyWith(deletingId: id);
     try {
       await _apiClient.delete('${ApiEndpoints.documents}/$id');
       state = state.copyWith(
         documents: state.documents.where((d) => d.id != id).toList(),
+        deletingId: null,
       );
     } catch (e) {
-      state = state.copyWith(error: 'Failed to delete document');
+      state = state.copyWith(deletingId: null, error: 'Failed to delete document');
     }
   }
 }

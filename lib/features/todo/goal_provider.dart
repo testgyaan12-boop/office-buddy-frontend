@@ -9,25 +9,31 @@ class GoalState {
   final List<GoalModel> dashboardGoals;
   final bool isLoading;
   final String? error;
+  final String? savingId; // 'create' or goal id
 
   const GoalState({
     this.goals = const [],
     this.dashboardGoals = const [],
     this.isLoading = false,
     this.error,
+    this.savingId,
   });
+
+  bool get isSaving => savingId != null;
 
   GoalState copyWith({
     List<GoalModel>? goals,
     List<GoalModel>? dashboardGoals,
     bool? isLoading,
     String? error,
+    String? savingId,
   }) {
     return GoalState(
       goals: goals ?? this.goals,
       dashboardGoals: dashboardGoals ?? this.dashboardGoals,
       isLoading: isLoading ?? this.isLoading,
       error: error,
+      savingId: savingId,
     );
   }
 }
@@ -66,6 +72,7 @@ class GoalNotifier extends StateNotifier<GoalState> {
     required String targetDate,
     required String category,
   }) async {
+    state = state.copyWith(savingId: 'create');
     try {
       await _apiClient.post(
         ApiEndpoints.goals,
@@ -78,8 +85,9 @@ class GoalNotifier extends StateNotifier<GoalState> {
       );
       await loadAllGoals();
       await loadDashboardGoals();
+      state = state.copyWith(savingId: null);
     } catch (e) {
-      state = state.copyWith(error: 'Failed to create goal');
+      state = state.copyWith(savingId: null, error: 'Failed to create goal');
     }
   }
 
@@ -91,6 +99,7 @@ class GoalNotifier extends StateNotifier<GoalState> {
     String? category,
     String? status,
   }) async {
+    state = state.copyWith(savingId: id);
     try {
       final data = <String, dynamic>{};
       if (title != null) data['title'] = title;
@@ -102,18 +111,21 @@ class GoalNotifier extends StateNotifier<GoalState> {
       await _apiClient.put('${ApiEndpoints.goals}/$id', data: data);
       await loadAllGoals();
       await loadDashboardGoals();
+      state = state.copyWith(savingId: null);
     } catch (e) {
-      state = state.copyWith(error: 'Failed to update goal');
+      state = state.copyWith(savingId: null, error: 'Failed to update goal');
     }
   }
 
   Future<void> deleteGoal(String id) async {
+    state = state.copyWith(savingId: id);
     try {
       await _apiClient.delete('${ApiEndpoints.goals}/$id');
       await loadAllGoals();
       await loadDashboardGoals();
+      state = state.copyWith(savingId: null);
     } catch (e) {
-      state = state.copyWith(error: 'Failed to delete goal');
+      state = state.copyWith(savingId: null, error: 'Failed to delete goal');
     }
   }
 }

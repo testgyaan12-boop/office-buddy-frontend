@@ -51,32 +51,48 @@ class _CompanyDetailScreenState extends ConsumerState<CompanyDetailScreen>
   void _confirmDeleteCompany(BuildContext context) {
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Delete Company'),
-        content: Text(
-          'Delete "${_company?.name ?? 'this company'}"? '
-          'It will be hidden from your list.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              Navigator.pop(ctx);
-              await ref
-                  .read(companiesProvider.notifier)
-                  .deleteCompany(widget.companyId);
-              if (mounted) context.pop();
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.error,
-              foregroundColor: Colors.white,
+      barrierDismissible: false,
+      builder: (ctx) => Consumer(
+        builder: (ctx2, ref2, _) {
+          final saving = ref2.watch(companiesProvider).isSaving;
+          return AlertDialog(
+            title: const Text('Delete Company'),
+            content: Text(
+              'Delete "${_company?.name ?? 'this company'}"? '
+              'It will be hidden from your list.',
             ),
-            child: const Text('Delete'),
-          ),
-        ],
+            actions: [
+              TextButton(
+                onPressed: saving ? null : () => Navigator.pop(ctx),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                onPressed: saving
+                    ? null
+                    : () async {
+                        await ref.read(companiesProvider.notifier).deleteCompany(widget.companyId);
+                        if (ref.read(companiesProvider).error == null && ctx.mounted) {
+                          Navigator.pop(ctx);
+                          if (mounted) context.pop();
+                        } else if (ctx.mounted) {
+                          Navigator.pop(ctx);
+                          if (mounted) {
+                            final err = ref.read(companiesProvider).error;
+                            if (err != null) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(err), backgroundColor: AppColors.error));
+                          }
+                        }
+                      },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.error,
+                  foregroundColor: Colors.white,
+                ),
+                child: saving
+                    ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                    : const Text('Delete'),
+              ),
+            ],
+          );
+        },
       ),
     );
   }

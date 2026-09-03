@@ -6,22 +6,26 @@ import 'models/company_model.dart';
 
 class CompaniesState {
   final bool isLoading;
+  final bool isSaving;
   final String? error;
   final List<CompanyModel> companies;
 
   const CompaniesState({
     this.isLoading = false,
+    this.isSaving = false,
     this.error,
     this.companies = const [],
   });
 
   CompaniesState copyWith({
     bool? isLoading,
+    bool? isSaving,
     String? error,
     List<CompanyModel>? companies,
   }) {
     return CompaniesState(
       isLoading: isLoading ?? this.isLoading,
+      isSaving: isSaving ?? this.isSaving,
       error: error,
       companies: companies ?? this.companies,
     );
@@ -59,35 +63,41 @@ class CompaniesNotifier extends StateNotifier<CompaniesState> {
   }
 
   Future<void> addCompany(CompanyModel company) async {
+    state = state.copyWith(isSaving: true, error: null);
     try {
       await _apiClient.post(
         ApiEndpoints.companies,
         data: company.toJson(),
       );
       await loadCompanies();
+      state = state.copyWith(isSaving: false);
     } catch (e) {
-      state = state.copyWith(error: 'Failed to add company');
+      state = state.copyWith(isSaving: false, error: 'Failed to add company');
     }
   }
 
   Future<void> updateCompany(String id, CompanyModel company) async {
+    state = state.copyWith(isSaving: true, error: null);
     try {
       await _apiClient.put(
         '${ApiEndpoints.companies}/$id',
         data: company.toJson(),
       );
       await loadCompanies();
+      state = state.copyWith(isSaving: false);
     } catch (e) {
-      state = state.copyWith(error: 'Failed to update company');
+      state = state.copyWith(isSaving: false, error: 'Failed to update company');
     }
   }
 
   Future<void> deleteCompany(String id) async {
+    state = state.copyWith(isSaving: true, error: null);
     try {
       await _apiClient.delete('${ApiEndpoints.companies}/$id');
       await loadCompanies();
+      state = state.copyWith(isSaving: false);
     } catch (e) {
-      state = state.copyWith(error: 'Failed to delete company');
+      state = state.copyWith(isSaving: false, error: 'Failed to delete company');
     }
   }
 }

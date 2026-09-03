@@ -67,26 +67,34 @@ class _GoalsScreenState extends ConsumerState<GoalsScreen> {
   void _confirmDelete(GoalModel goal) {
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Delete Goal'),
-        content: Text('Delete "${goal.title}"?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              ref.read(goalProvider.notifier).deleteGoal(goal.id);
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.error,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('Delete'),
-          ),
-        ],
+      barrierDismissible: false,
+      builder: (ctx) => Consumer(
+        builder: (ctx2, ref2, _) {
+          final saving = ref2.watch(goalProvider).savingId == goal.id;
+          return AlertDialog(
+            title: const Text('Delete Goal'),
+            content: Text('Delete "${goal.title}"?'),
+            actions: [
+              TextButton(
+                onPressed: saving ? null : () => Navigator.pop(ctx),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                onPressed: saving
+                    ? null
+                    : () async {
+                        await ref.read(goalProvider.notifier).deleteGoal(goal.id);
+                        if (ctx.mounted) Navigator.pop(ctx);
+                      },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.error,
+                  foregroundColor: Colors.white,
+                ),
+                child: saving ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Text('Delete'),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -94,29 +102,34 @@ class _GoalsScreenState extends ConsumerState<GoalsScreen> {
   void _confirmComplete(GoalModel goal) {
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Complete Goal'),
-        content: Text('Mark "${goal.title}" as completed?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              ref.read(goalProvider.notifier).updateGoal(
-                    id: goal.id,
-                    status: 'completed',
-                  );
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.success,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('Complete'),
-          ),
-        ],
+      barrierDismissible: false,
+      builder: (ctx) => Consumer(
+        builder: (ctx2, ref2, _) {
+          final saving = ref2.watch(goalProvider).savingId == goal.id;
+          return AlertDialog(
+            title: const Text('Complete Goal'),
+            content: Text('Mark "${goal.title}" as completed?'),
+            actions: [
+              TextButton(
+                onPressed: saving ? null : () => Navigator.pop(ctx),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                onPressed: saving
+                    ? null
+                    : () async {
+                        await ref.read(goalProvider.notifier).updateGoal(id: goal.id, status: 'completed');
+                        if (ctx.mounted) Navigator.pop(ctx);
+                      },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.success,
+                  foregroundColor: Colors.white,
+                ),
+                child: saving ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Text('Complete'),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -390,20 +403,32 @@ class _GoalCard extends StatelessWidget {
                             ),
                           ),
                           if (onComplete != null)
-                            IconButton(
-                              icon: Icon(Icons.check_circle_outline,
-                                  color: AppColors.success, size: 20),
-                              onPressed: onComplete,
-                              padding: EdgeInsets.zero,
-                              constraints: const BoxConstraints(),
+                            Consumer(
+                              builder: (context, ref, _) {
+                                final saving = ref.watch(goalProvider).savingId == goal.id;
+                                return saving
+                                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.success))
+                                    : IconButton(
+                                        icon: const Icon(Icons.check_circle_outline, color: AppColors.success, size: 20),
+                                        onPressed: onComplete,
+                                        padding: EdgeInsets.zero,
+                                        constraints: const BoxConstraints(),
+                                      );
+                              },
                             ),
                           const SizedBox(width: 8),
-                          IconButton(
-                            icon: const Icon(Icons.delete_outline,
-                                color: AppColors.error, size: 20),
-                            onPressed: onDelete,
-                            padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(),
+                          Consumer(
+                            builder: (context, ref, _) {
+                              final saving = ref.watch(goalProvider).savingId == goal.id;
+                              return saving
+                                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.error))
+                                  : IconButton(
+                                      icon: const Icon(Icons.delete_outline, color: AppColors.error, size: 20),
+                                      onPressed: onDelete,
+                                      padding: EdgeInsets.zero,
+                                      constraints: const BoxConstraints(),
+                                    );
+                            },
                           ),
                         ],
                       ),
@@ -470,7 +495,7 @@ class _GoalFormSheet extends StatefulWidget {
   State<_GoalFormSheet> createState() => _GoalFormSheetState();
 }
 
-class _GoalFormSheetState extends State<_GoalFormSheet> {
+class _GoalFormSheetState extends ConsumerState<_GoalFormSheet> {
   late TextEditingController _titleController;
   late TextEditingController _descriptionController;
   late String _category;
@@ -615,26 +640,43 @@ class _GoalFormSheetState extends State<_GoalFormSheet> {
             ],
           ),
           const SizedBox(height: 20),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: () {
-                if (_titleController.text.trim().isEmpty || _targetDate == null) return;
-                widget.onSave(
-                  _titleController.text.trim(),
-                  _descriptionController.text.trim().isEmpty ? null : _descriptionController.text.trim(),
-                  _targetDate!.toIso8601String().split('T')[0],
-                  _category,
-                );
-                Navigator.pop(context);
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 14),
-              ),
-              child: const Text('Save'),
-            ),
+          Consumer(
+            builder: (context, ref, _) {
+              final isSaving = ref.watch(goalProvider).isSaving;
+              return SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: isSaving
+                      ? null
+                      : () {
+                          if (_titleController.text.trim().isEmpty || _targetDate == null) return;
+                          widget.onSave(
+                            _titleController.text.trim(),
+                            _descriptionController.text.trim().isEmpty ? null : _descriptionController.text.trim(),
+                            _targetDate!.toIso8601String().split('T')[0],
+                            _category,
+                          );
+                          // Don't pop immediately — wait for provider to finish, close via listener
+                          // For now pop after short delay; provider will reload list
+                          Future.delayed(const Duration(milliseconds: 300), () {
+                            if (context.mounted && ref.read(goalProvider).savingId == null) Navigator.pop(context);
+                          });
+                          // Optimistic close if not saving tracked: close next frame
+                          if (!isSaving) {
+                            // will be handled by delayed check
+                          }
+                        },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                  ),
+                  child: isSaving
+                      ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                      : const Text('Save'),
+                ),
+              );
+            },
           ),
           const SizedBox(height: 20),
         ],

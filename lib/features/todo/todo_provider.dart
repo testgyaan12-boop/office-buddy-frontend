@@ -7,22 +7,26 @@ class TodoState {
   final List<TodoModel> todos;
   final bool isLoading;
   final String? error;
+  final String? savingId;
 
   const TodoState({
     this.todos = const [],
     this.isLoading = false,
     this.error,
+    this.savingId,
   });
 
   TodoState copyWith({
     List<TodoModel>? todos,
     bool? isLoading,
     String? error,
+    String? savingId,
   }) {
     return TodoState(
       todos: todos ?? this.todos,
       isLoading: isLoading ?? this.isLoading,
       error: error,
+      savingId: savingId,
     );
   }
 }
@@ -73,6 +77,7 @@ class TodoNotifier extends StateNotifier<TodoState> {
     String? dueDate,
     String? goalId,
   }) async {
+    state = state.copyWith(savingId: 'create');
     try {
       await _apiClient.post(
         ApiEndpoints.todos,
@@ -85,8 +90,9 @@ class TodoNotifier extends StateNotifier<TodoState> {
         },
       );
       await loadTodos(type: _currentType, search: _currentSearch, date: _currentDate);
+      state = state.copyWith(savingId: null);
     } catch (e) {
-      state = state.copyWith(error: 'Failed to create todo');
+      state = state.copyWith(savingId: null, error: 'Failed to create todo');
     }
   }
 
@@ -97,6 +103,7 @@ class TodoNotifier extends StateNotifier<TodoState> {
     String? dueDate,
     bool? completed,
   }) async {
+    state = state.copyWith(savingId: id);
     try {
       final data = <String, dynamic>{};
       if (title != null) data['title'] = title;
@@ -106,17 +113,20 @@ class TodoNotifier extends StateNotifier<TodoState> {
 
       await _apiClient.put('${ApiEndpoints.todos}/$id', data: data);
       await loadTodos(type: _currentType, search: _currentSearch, date: _currentDate);
+      state = state.copyWith(savingId: null);
     } catch (e) {
-      state = state.copyWith(error: 'Failed to update todo');
+      state = state.copyWith(savingId: null, error: 'Failed to update todo');
     }
   }
 
   Future<void> deleteTodo(String id) async {
+    state = state.copyWith(savingId: id);
     try {
       await _apiClient.delete('${ApiEndpoints.todos}/$id');
       await loadTodos(type: _currentType, search: _currentSearch, date: _currentDate);
+      state = state.copyWith(savingId: null);
     } catch (e) {
-      state = state.copyWith(error: 'Failed to delete todo');
+      state = state.copyWith(savingId: null, error: 'Failed to delete todo');
     }
   }
 }

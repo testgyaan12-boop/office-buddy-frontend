@@ -68,7 +68,14 @@ class _AddCompanyScreenState extends ConsumerState<AddCompanyScreen> {
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
-    if (_startDate == null) return;
+    if (_startDate == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please select start date'), backgroundColor: AppColors.error));
+      return;
+    }
+    if (!_isCurrent && _endDate == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please select end date or check Currently working here'), backgroundColor: AppColors.error));
+      return;
+    }
 
     final company = CompanyModel(
       id: widget.companyId ?? '',
@@ -80,18 +87,22 @@ class _AddCompanyScreenState extends ConsumerState<AddCompanyScreen> {
     );
 
     if (isEditing) {
-      await ref
-          .read(companiesProvider.notifier)
-          .updateCompany(widget.companyId!, company);
+      await ref.read(companiesProvider.notifier).updateCompany(widget.companyId!, company);
     } else {
       await ref.read(companiesProvider.notifier).addCompany(company);
     }
 
+    final err = ref.read(companiesProvider).error;
+    if (err != null && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(err), backgroundColor: AppColors.error));
+      return;
+    }
     if (mounted) context.pop();
   }
 
   @override
   Widget build(BuildContext context) {
+    final isSaving = ref.watch(companiesProvider).isSaving;
     return Scaffold(
       appBar: AppBar(
         title: Text(isEditing ? 'Edit Company' : 'Add Company'),
@@ -248,22 +259,25 @@ class _AddCompanyScreenState extends ConsumerState<AddCompanyScreen> {
                             ],
                           ),
                           child: ElevatedButton(
-                            onPressed: _save,
+                            onPressed: isSaving ? null : _save,
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.transparent,
                               shadowColor: Colors.transparent,
                               foregroundColor: Colors.white,
+                              disabledBackgroundColor: Colors.transparent,
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(14),
                               ),
                             ),
-                            child: Text(
-                              isEditing ? 'Update Company' : 'Save Company',
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
+                            child: isSaving
+                                ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white))
+                                : Text(
+                                    isEditing ? 'Update Company' : 'Save Company',
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
                           ),
                         ),
                       ),

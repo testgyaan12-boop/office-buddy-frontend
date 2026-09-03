@@ -272,12 +272,19 @@ class _DashboardContent extends StatelessWidget {
                     ),
                     DateBadge(doc.formattedDate, icon: Icons.calendar_today),
                     const SizedBox(width: 4),
-                    IconButton(
-                      icon: const Icon(Icons.delete_outline,
-                          color: AppColors.error, size: 18),
-                      onPressed: () => onDeleteDocument(doc),
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
+                    Consumer(
+                      builder: (context, ref, _) {
+                        final delId = ref.watch(documentsProvider).deletingId;
+                        final isDel = delId == doc.id;
+                        return isDel
+                            ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.error))
+                            : IconButton(
+                                icon: const Icon(Icons.delete_outline, color: AppColors.error, size: 18),
+                                onPressed: () => onDeleteDocument(doc),
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(),
+                              );
+                      },
                     ),
                   ],
                 ),
