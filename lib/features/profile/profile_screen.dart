@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_strings.dart';
+import '../../shared/widgets/password_field.dart';
 import '../auth/auth_provider.dart';
 
 class ProfileScreen extends ConsumerWidget {
@@ -819,13 +820,13 @@ class _InfoRow extends StatelessWidget {
   }
 }
 
-class _SettingsSection extends StatelessWidget {
+class _SettingsSection extends ConsumerWidget {
   final dynamic user;
 
   const _SettingsSection({required this.user});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -844,7 +845,7 @@ class _SettingsSection extends StatelessWidget {
             context,
             icon: Icons.lock_outline,
             title: 'Change Password',
-            onTap: () => _showChangePasswordDialog(context),
+            onTap: () => _showChangePasswordDialog(context, ref),
           ),
           const Divider(height: 1, indent: 56),
           _settingsTile(
@@ -882,51 +883,152 @@ class _SettingsSection extends StatelessWidget {
     );
   }
 
-  void _showChangePasswordDialog(BuildContext context) {
+  void _showChangePasswordDialog(BuildContext context, WidgetRef ref) {
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Change Password'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              obscureText: true,
-              decoration: const InputDecoration(
-                labelText: 'Current Password',
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              obscureText: true,
-              decoration: const InputDecoration(
-                labelText: 'New Password',
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              obscureText: true,
-              decoration: const InputDecoration(
-                labelText: 'Confirm New Password',
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text(AppStrings.cancel),
+      barrierDismissible: false,
+      builder: (ctx) => const _ChangePasswordDialog(),
+    );
+  }
+}
+
+class _ChangePasswordDialog extends ConsumerStatefulWidget {
+  const _ChangePasswordDialog();
+
+  @override
+  ConsumerState<_ChangePasswordDialog> createState() => _ChangePasswordDialogState();
+}
+
+class _ChangePasswordDialogState extends ConsumerState<_ChangePasswordDialog> {
+  final _formKey = GlobalKey<FormState>();
+  final _currentController = TextEditingController();
+  final _newController = TextEditingController();
+  final _confirmController = TextEditingController();
+  bool _saving = false;
+  String? _apiError;
+  bool _obscureCurrent = true;
+
+  @override
+  void dispose() {
+    _currentController.dispose();
+    _newController.dispose();
+    _confirmController.dispose();
+    super.dispose();
+  }
+
+  String? _validateNewPassword(String? v) {
+    if (v == null || v.isEmpty) return 'Enter new password';
+    if (v.length < 8) return 'At least 8 characters';
+    if (!RegExp(r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$').hasMatch(v)) {
+      return 'Must have 1 uppercase, 1 lowercase, 1 digit & 1 special (@\$!%*?&)';
+    }
+    return null;
+  }
+
+  Future<void> _submit() async {
+    if (!_formKey.currentState!.validate()) return;
+    if (_newController.text != _confirmController.text) {
+      setState(() => _apiError = 'Passwords do not match');
+      return;
+    }
+    setState(() {
+      _saving = true;
+      _apiError = null;
+    });
+    final err = await ref.read(authProvider.notifier).changePassword(
+          _currentController.text,
+          _newController.text,
+        );
+    if (!mounted) return;
+    setState(() => _saving = false);
+    if (err == null) {
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Password changed successfully'), backgroundColor: AppColors.success),
+      );
+    } else {
+      setState(() => _apiError = err);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(color: AppColors.primary.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(8)),
+            child: const Icon(Icons.lock_outline, color: AppColors.primary, size: 18),
           ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(ctx),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text(AppStrings.save),
-          ),
+          const SizedBox(width: 10),
+          const Text('Change Password', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
         ],
       ),
+      content: Form(
+        key: _formKey,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextFormField(
+                controller: _currentController,
+                obscureText: _obscureCurrent,
+                decoration: InputDecoration(
+                  labelText: 'Current Password *',
+                  prefixIcon: const Icon(Icons.lock_outline, size: 20),
+                  suffixIcon: IconButton(
+                    icon: Icon(_obscureCurrent ? Icons.visibility_off : Icons.visibility, size: 20),
+                    onPressed: () => setState(() => _obscureCurrent = !_obscureCurrent),
+                  ),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                ),
+                validator: (v) => (v == null || v.isEmpty) ? 'Enter current password' : null,
+              ),
+              const SizedBox(height: 12),
+              PasswordField(
+                controller: _newController,
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _confirmController,
+                obscureText: true,
+                decoration: InputDecoration(
+                  labelText: 'Confirm New Password *',
+                  prefixIcon: const Icon(Icons.lock_outline, size: 20),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                ),
+                validator: (v) {
+                  if (v == null || v.isEmpty) return 'Confirm new password';
+                  if (v != _newController.text) return 'Passwords do not match';
+                  return null;
+                },
+              ),
+              if (_apiError != null) ...[
+                const SizedBox(height: 12),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(color: AppColors.error.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(8)),
+                  child: Text(_apiError!, style: const TextStyle(color: AppColors.error, fontSize: 13)),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(onPressed: _saving ? null : () => Navigator.pop(context), child: const Text(AppStrings.cancel)),
+        ElevatedButton(
+          onPressed: _saving ? null : _submit,
+          style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white),
+          child: _saving
+              ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+              : const Text(AppStrings.save),
+        ),
+      ],
     );
   }
 }

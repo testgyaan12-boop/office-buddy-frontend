@@ -271,6 +271,18 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
+  Future<String?> changePassword(String currentPassword, String newPassword) async {
+    try {
+      await _apiClient.put(
+        ApiEndpoints.changePassword,
+        data: {'currentPassword': currentPassword, 'newPassword': newPassword},
+      );
+      return null;
+    } catch (e) {
+      return _extractError(e);
+    }
+  }
+
   Future<void> logout() async {
     await _secureStorage.clearSession();
     state = const AuthState(status: AuthStatus.unauthenticated);
