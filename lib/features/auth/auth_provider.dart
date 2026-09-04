@@ -305,6 +305,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
     state = const AuthState(status: AuthStatus.error, error: 'Session expired, please login with password');
     return 'Session expired, please login with password';
   }
+
+  Future<void> logout() async {
     await _secureStorage.clearSession();
     state = const AuthState(status: AuthStatus.unauthenticated);
   }

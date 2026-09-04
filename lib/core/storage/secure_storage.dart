@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
@@ -30,24 +31,88 @@ class SecureStorage {
 
   Future<String?> getUserData() => _storage.read(key: _userKey);
 
-  Future<void> savePin(String pin) =>
-      _storage.write(key: _pinKey, value: pin);
+  Future<void> savePin(String pin) async {
+    final uid = await _getUserId();
+    if (uid != null) {
+      await _storage.write(key: '${_pinKey}_$uid', value: pin);
+      // keep global for migration
+      await _storage.write(key: _pinKey, value: pin);
+    } else {
+      await _storage.write(key: _pinKey, value: pin);
+    }
+  }
 
-  Future<String?> getPin() => _storage.read(key: _pinKey);
+  Future<String?> getPin() async {
+    final uid = await _getUserId();
+    if (uid != null) {
+      final per = await _storage.read(key: '${_pinKey}_$uid');
+      if (per != null) return per;
+    }
+    return _storage.read(key: _pinKey);
+  }
+
+  Future<String?> getPinFor(String userId) => _storage.read(key: '${_pinKey}_$userId');
+  Future<void> savePinFor(String userId, String pin) => _storage.write(key: '${_pinKey}_$userId', value: pin);
+  Future<void> deletePinFor(String userId) => _storage.delete(key: '${_pinKey}_$userId');
 
   Future<bool> hasPin() async {
+    final uid = await _getUserId();
+    if (uid != null) {
+      final per = await _storage.read(key: '${_pinKey}_$uid');
+      if (per != null) return true;
+    }
     final pin = await _storage.read(key: _pinKey);
     return pin != null;
   }
 
-  Future<void> deletePin() => _storage.delete(key: _pinKey);
+  Future<bool> hasPinFor(String userId) async {
+    final per = await _storage.read(key: '${_pinKey}_$userId');
+    if (per != null) return true;
+    return (await _storage.read(key: _pinKey)) != null;
+  }
 
-  Future<void> setBiometricEnabled(bool enabled) =>
-      _storage.write(key: _biometricEnabled, value: enabled.toString());
+  Future<void> deletePin() async {
+    final uid = await _getUserId();
+    if (uid != null) await _storage.delete(key: '${_pinKey}_$uid');
+    await _storage.delete(key: _pinKey);
+  }
+
+  Future<void> setBiometricEnabled(bool enabled) async {
+    final uid = await _getUserId();
+    if (uid != null) {
+      await _storage.write(key: '${_biometricEnabled}_$uid', value: enabled.toString());
+    }
+    await _storage.write(key: _biometricEnabled, value: enabled.toString());
+  }
 
   Future<bool> isBiometricEnabled() async {
+    final uid = await _getUserId();
+    if (uid != null) {
+      final per = await _storage.read(key: '${_biometricEnabled}_$uid');
+      if (per != null) return per == 'true';
+    }
     final val = await _storage.read(key: _biometricEnabled);
     return val == 'true';
+  }
+
+  Future<bool> isBiometricEnabledFor(String userId) async {
+    final per = await _storage.read(key: '${_biometricEnabled}_$userId');
+    if (per != null) return per == 'true';
+    return (await _storage.read(key: _biometricEnabled)) == 'true';
+  }
+
+  Future<void> setBiometricEnabledFor(String userId, bool enabled) =>
+      _storage.write(key: '${_biometricEnabled}_$userId', value: enabled.toString());
+
+  Future<String?> _getUserId() async {
+    try {
+      final data = await _storage.read(key: _userKey);
+      if (data == null) return null;
+      final m = jsonDecode(data) as Map<String, dynamic>;
+      return m['id'] as String?;
+    } catch (_) {
+      return null;
+    }
   }
 
   Future<void> setOnboardingSeen() =>
