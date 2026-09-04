@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:local_auth/local_auth.dart';
+import 'package:pin_code_fields/pin_code_fields.dart';
 import '../../core/constants/app_colors.dart';
+import '../../core/storage/secure_storage.dart';
 import '../../shared/widgets/password_field.dart';
 import 'auth_provider.dart';
 
@@ -25,8 +29,41 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
   final _verifyTokenController = TextEditingController();
   final _newPasswordController = TextEditingController();
   final _confirmNewController = TextEditingController();
+  final _pinLoginController = TextEditingController();
+  final _localAuth = LocalAuthentication();
   String _storedEmail = '';
   bool _obscurePassword = true;
+  bool _showPinLogin = false;
+  bool _hasPin = false;
+  bool _biometricAvailable = false;
+  bool _biometricEnabled = false;
+  String? _pinError;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPinState();
+  }
+
+  Future<void> _loadPinState() async {
+    final storage = ref.read(secureStorageProvider);
+    final hasPin = await storage.hasPin();
+    final bioOn = await storage.isBiometricEnabled();
+    bool bioAvail = false;
+    try {
+      final canCheck = await _localAuth.canCheckBiometrics;
+      final types = await _localAuth.getAvailableBiometrics();
+      final supported = await _localAuth.isDeviceSupported();
+      bioAvail = canCheck && types.isNotEmpty && supported;
+    } catch (_) {}
+    if (mounted) {
+      setState(() {
+        _hasPin = hasPin;
+        _biometricEnabled = bioOn;
+        _biometricAvailable = bioAvail;
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -38,6 +75,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
     _verifyTokenController.dispose();
     _newPasswordController.dispose();
     _confirmNewController.dispose();
+    _pinLoginController.dispose();
     super.dispose();
   }
 
@@ -316,6 +354,80 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                     : const Text('Sign In', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
               ),
             ),
+            if (_hasPin) ...[
+              const SizedBox(height: 12),
+              Row(children: [Expanded(child: Divider(color: AppColors.textLight.withValues(alpha: 0.2))), Padding(padding: EdgeInsets.symmetric(horizontal: 12), child: Text('OR', style: TextStyle(color: AppColors.textLight, fontSize: 11, fontWeight: FontWeight.w600))), Expanded(child: Divider(color: AppColors.textLight.withValues(alpha: 0.2)))]),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () => setState(() => _showPinLogin = !_showPinLogin),
+                  icon: Icon(_showPinLogin ? Icons.close_rounded : Icons.lock_rounded, size: 18, color: AppColors.primary),
+                  label: Text(_showPinLogin ? 'Hide PIN Login' : 'Login with PIN', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                  style: OutlinedButton.styleFrom(foregroundColor: AppColors.primary, side: const BorderSide(color: AppColors.primary), padding: const EdgeInsets.symmetric(vertical: 13), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                ),
+              ),
+              if (_showPinLogin) ...[
+                const SizedBox(height: 12),
+                PinCodeTextField(
+                  appContext: context,
+                  length: 4,
+                  controller: _pinLoginController,
+                  obscureText: true,
+                  obscuringCharacter: '●',
+                  animationType: AnimationType.fade,
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  pinTheme: PinTheme(
+                    shape: PinCodeFieldShape.box,
+                    borderRadius: BorderRadius.circular(8),
+                    fieldHeight: 48,
+                    fieldWidth: 45,
+                    activeFillColor: Colors.white,
+                    inactiveFillColor: AppColors.background,
+                    selectedFillColor: AppColors.primary.withValues(alpha: 0.05),
+                    activeColor: AppColors.primary,
+                    inactiveColor: AppColors.textLight.withValues(alpha: 0.3),
+                    selectedColor: AppColors.primary,
+                  ),
+                  enableActiveFill: true,
+                  onCompleted: (_) => _onPinLogin(),
+                  onChanged: (_) {
+                    if (_pinError != null) setState(() => _pinError = null);
+                  },
+                ),
+                if (_pinError != null)
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(10),
+                    margin: const EdgeInsets.only(bottom: 8),
+                    decoration: BoxDecoration(color: AppColors.error.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(8)),
+                    child: Text(_pinError!, style: const TextStyle(color: AppColors.error, fontSize: 12)),
+                  ),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: authState.status == AuthStatus.loading ? null : _onPinLogin,
+                    style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 13), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                    child: authState.status == AuthStatus.loading
+                        ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                        : const Text('Unlock with PIN', style: TextStyle(fontWeight: FontWeight.w600)),
+                  ),
+                ),
+              ],
+              if (_biometricAvailable && _biometricEnabled) ...[
+                const SizedBox(height: 10),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: _onBiometricLogin,
+                    icon: const Icon(Icons.fingerprint, color: AppColors.primary, size: 20),
+                    label: const Text('Login with Biometric', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                    style: OutlinedButton.styleFrom(foregroundColor: AppColors.primary, side: const BorderSide(color: AppColors.primary), padding: const EdgeInsets.symmetric(vertical: 13), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                  ),
+                ),
+              ],
+            ],
             const SizedBox(height: 16),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -791,6 +903,39 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
       _emailController.text.trim(),
       _passwordController.text,
     );
+  }
+
+  Future<void> _onPinLogin() async {
+    final pin = _pinLoginController.text.trim();
+    if (pin.length != 4) {
+      setState(() => _pinError = 'Enter 4-digit PIN');
+      return;
+    }
+    final err = await ref.read(authProvider.notifier).loginWithPin(pin);
+    if (err != null && mounted) {
+      setState(() => _pinError = err);
+    } else {
+      if (mounted) setState(() => _pinError = null);
+    }
+  }
+
+  Future<void> _onBiometricLogin() async {
+    try {
+      final ok = await _localAuth.authenticate(
+        localizedReason: 'Login with Biometric',
+        options: const AuthenticationOptions(biometricOnly: false, stickyAuth: true),
+      );
+      if (!ok) return;
+      final pin = await ref.read(secureStorageProvider).getPin();
+      if (pin == null) {
+        if (mounted) setState(() => _pinError = 'No PIN set');
+        return;
+      }
+      final err = await ref.read(authProvider.notifier).loginWithPin(pin);
+      if (err != null && mounted) setState(() => _pinError = err);
+    } catch (e) {
+      if (mounted) setState(() => _pinError = 'Biometric failed');
+    }
   }
 
   void _onRegister() {

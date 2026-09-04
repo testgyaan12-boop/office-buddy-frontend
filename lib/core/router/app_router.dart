@@ -15,6 +15,7 @@ import '../../features/documents/document_preview_screen.dart';
 import '../../features/search/search_screen.dart';
 import '../../features/jobswitch/jobswitch_screen.dart';
 import '../../features/applock/app_lock_screen.dart';
+import '../../features/applock/unlock_screen.dart';
 import '../../features/profile/profile_edit_screen.dart';
 import '../../features/profile/profile_screen.dart';
 import '../../features/todo/goals_screen.dart';
@@ -38,21 +39,31 @@ class AppRouter {
     redirect: (context, state) async {
       final isLoggedIn = await _secureStorage.getToken() != null;
       final isOnboardingSeen = await _secureStorage.hasSeenOnboarding();
+      final hasPin = await _secureStorage.hasPin();
       final path = state.uri.path;
 
       if (path == '/splash') return null;
+      if (path == '/lock') return null;
       if (!isOnboardingSeen) {
         if (path != '/onboarding') return '/onboarding';
         return null;
       }
       if (!isLoggedIn && path != '/auth') return '/auth';
-      if (isLoggedIn && path == '/auth') return '/';
+      if (isLoggedIn && path == '/auth') {
+        if (hasPin) return '/lock';
+        return '/';
+      }
+      if (isLoggedIn && hasPin && path != '/lock' && path != '/app-lock' && !path.startsWith('/lock')) {
+        return '/lock';
+      }
+      if (isLoggedIn && !hasPin && path == '/lock') return '/';
       return null;
     },
     routes: [
       GoRoute(path: '/splash', builder: (_, __) => SplashScreen()),
       GoRoute(path: '/onboarding', builder: (_, __) => OnboardingScreen()),
       GoRoute(path: '/auth', builder: (_, __) => AuthScreen()),
+      GoRoute(path: '/lock', builder: (_, __) => const UnlockScreen()),
       GoRoute(
         path: '/',
         builder: (_, __) => MainShell(),

@@ -283,7 +283,28 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
-  Future<void> logout() async {
+  Future<bool> hasPinSet() => _secureStorage.hasPin();
+
+  Future<String?> loginWithPin(String pin) async {
+    final saved = await _secureStorage.getPin();
+    if (saved == null || saved != pin) {
+      state = const AuthState(status: AuthStatus.error, error: 'Incorrect PIN');
+      return 'Incorrect PIN';
+    }
+    final refreshed = await _apiClient.tryRefresh();
+    if (refreshed) {
+      await _checkAuth();
+      if (state.status == AuthStatus.authenticated) return null;
+    }
+    // Fallback: if refresh failed but token still valid locally, use cached user
+    final token = await _secureStorage.getToken();
+    if (token != null) {
+      await _checkAuth();
+      if (state.status == AuthStatus.authenticated) return null;
+    }
+    state = const AuthState(status: AuthStatus.error, error: 'Session expired, please login with password');
+    return 'Session expired, please login with password';
+  }
     await _secureStorage.clearSession();
     state = const AuthState(status: AuthStatus.unauthenticated);
   }

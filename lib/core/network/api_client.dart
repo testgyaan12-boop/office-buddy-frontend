@@ -49,6 +49,8 @@ class ApiClient {
     );
   }
 
+  Future<bool> tryRefresh() async => _refreshToken();
+
   Future<bool> _refreshToken() async {
     try {
       final refreshToken = await _secureStorage.getRefreshToken();

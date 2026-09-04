@@ -40,6 +40,8 @@ class SecureStorage {
     return pin != null;
   }
 
+  Future<void> deletePin() => _storage.delete(key: _pinKey);
+
   Future<void> setBiometricEnabled(bool enabled) =>
       _storage.write(key: _biometricEnabled, value: enabled.toString());
 
@@ -62,6 +64,6 @@ class SecureStorage {
 
   Future<void> clearSession() async {
     await _storage.delete(key: _tokenKey);
-    await _storage.delete(key: _refreshTokenKey);
+    // Keep refresh token, user_data, pin & biometric for PIN login (Option A)
   }
 }
