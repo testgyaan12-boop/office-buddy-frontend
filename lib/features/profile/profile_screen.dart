@@ -1,5 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/constants/app_colors.dart';
@@ -56,6 +57,33 @@ class ProfileScreen extends ConsumerWidget {
             width: double.infinity,
             child: OutlinedButton.icon(
               onPressed: () async {
+                final confirmed = await showDialog<bool>(
+                  context: context,
+                  barrierDismissible: false,
+                  builder: (ctx) => AlertDialog(
+                    title: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(color: AppColors.error.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(8)),
+                          child: const Icon(Icons.logout, color: AppColors.error, size: 18),
+                        ),
+                        const SizedBox(width: 10),
+                        const Text('Confirm Logout', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                      ],
+                    ),
+                    content: const Text('Are you sure you want to logout?', style: TextStyle(fontSize: 14, color: AppColors.textSecondary)),
+                    actions: [
+                      TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel', style: TextStyle(color: AppColors.textSecondary))),
+                      ElevatedButton(
+                        onPressed: () => Navigator.pop(ctx, true),
+                        style: ElevatedButton.styleFrom(backgroundColor: AppColors.error, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+                        child: const Text('Logout'),
+                      ),
+                    ],
+                  ),
+                );
+                if (confirmed != true) return;
                 await ref.read(authProvider.notifier).logout();
                 if (context.mounted) context.go('/auth');
               },
@@ -369,14 +397,14 @@ class _ProfessionalSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const color = Color(0xFF26A69A);
-    Widget buildItem(IconData icon, String label, String value, {bool isUrl = false}) {
+    Widget buildItem(IconData icon, String label, String value, {bool isUrl = false, bool copyable = false}) {
       return Container(
         decoration: BoxDecoration(
           color: color.withValues(alpha: 0.04),
           borderRadius: BorderRadius.circular(10),
           border: Border.all(color: color.withValues(alpha: 0.08)),
         ),
-        child: _InfoRow(item: _InfoItem(icon: icon, label: label, value: value, isUrl: isUrl), color: color),
+        child: _InfoRow(item: _InfoItem(icon: icon, label: label, value: value, isUrl: isUrl, copyable: copyable), color: color),
       );
     }
 
@@ -422,10 +450,10 @@ class _ProfessionalSection extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
                   // Row3: LinkedIn only
-                  buildItem(Icons.link, 'LinkedIn', user?.linkedInUrl ?? '—', isUrl: user?.linkedInUrl != null),
+                  buildItem(Icons.link, 'LinkedIn', user?.linkedInUrl ?? '—', isUrl: user?.linkedInUrl != null, copyable: user?.linkedInUrl != null),
                   const SizedBox(height: 8),
                   // Row4: Portfolio only
-                  buildItem(Icons.web, 'Portfolio', user?.portfolioUrl ?? '—', isUrl: user?.portfolioUrl != null),
+                  buildItem(Icons.web, 'Portfolio', user?.portfolioUrl ?? '—', isUrl: user?.portfolioUrl != null, copyable: user?.portfolioUrl != null),
                 ],
               ),
             ),
@@ -445,13 +473,14 @@ class _IdentitySection extends StatelessWidget {
     const color = Color(0xFFFFA726);
     if (user?.uanNumber == null && user?.pfNumber == null) return const SizedBox.shrink();
     Widget buildItem(IconData icon, String label, String value) {
+      final canCopy = value != '—' && value.isNotEmpty;
       return Container(
         decoration: BoxDecoration(
           color: color.withValues(alpha: 0.04),
           borderRadius: BorderRadius.circular(10),
           border: Border.all(color: color.withValues(alpha: 0.08)),
         ),
-        child: _InfoRow(item: _InfoItem(icon: icon, label: label, value: value), color: color),
+        child: _InfoRow(item: _InfoItem(icon: icon, label: label, value: value, copyable: canCopy), color: color),
       );
     }
 
@@ -507,13 +536,14 @@ class _ContactAddressSection extends StatelessWidget {
   Widget build(BuildContext context) {
     const color = Color(0xFF7E57C2);
     Widget buildItem(IconData icon, String label, String value) {
+      final canCopy = (label == 'Bank A/c' || label == 'IFSC') && value != '—' && value.isNotEmpty;
       return Container(
         decoration: BoxDecoration(
           color: color.withValues(alpha: 0.04),
           borderRadius: BorderRadius.circular(10),
           border: Border.all(color: color.withValues(alpha: 0.08)),
         ),
-        child: _InfoRow(item: _InfoItem(icon: icon, label: label, value: value), color: color),
+        child: _InfoRow(item: _InfoItem(icon: icon, label: label, value: value, copyable: canCopy), color: color),
       );
     }
 
@@ -706,12 +736,14 @@ class _InfoItem {
   final String label;
   final String value;
   final bool isUrl;
+  final bool copyable;
 
   _InfoItem({
     required this.icon,
     required this.label,
     required this.value,
     this.isUrl = false,
+    this.copyable = false,
   });
 }
 
@@ -723,6 +755,7 @@ class _InfoRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final canCopy = item.copyable && item.value != '—' && item.value.isNotEmpty;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       child: Row(
@@ -760,6 +793,26 @@ class _InfoRow extends StatelessWidget {
               ],
             ),
           ),
+          if (canCopy)
+            InkWell(
+              borderRadius: BorderRadius.circular(8),
+              onTap: () async {
+                await Clipboard.setData(ClipboardData(text: item.value));
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('${item.label} copied'), duration: const Duration(seconds: 1), backgroundColor: color),
+                  );
+                }
+              },
+              child: Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(Icons.copy_rounded, size: 14, color: color),
+              ),
+            ),
         ],
       ),
     );
