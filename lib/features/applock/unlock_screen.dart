@@ -6,6 +6,7 @@ import 'package:local_auth/local_auth.dart';
 import 'package:pin_code_fields/pin_code_fields.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/storage/secure_storage.dart';
+import '../auth/auth_provider.dart';
 
 class UnlockScreen extends ConsumerStatefulWidget {
   const UnlockScreen({super.key});
@@ -52,7 +53,15 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
         options: const AuthenticationOptions(biometricOnly: false, stickyAuth: true),
       );
       if (ok && mounted) {
-        context.go('/');
+        final pin = await ref.read(secureStorageProvider).getPin();
+        if (pin != null) {
+          final err = await ref.read(authProvider.notifier).loginWithPin(pin);
+          if (err == null && mounted) {
+            context.go('/');
+            return;
+          }
+        }
+        if (mounted) context.go('/');
       }
     } catch (e) {
       if (mounted) setState(() => _error = 'Biometric failed');
@@ -60,12 +69,16 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
   }
 
   Future<void> _verifyPin(String pin) async {
-    final saved = await ref.read(secureStorageProvider).getPin();
-    if (pin == saved) {
-      if (mounted) context.go('/');
-    } else {
+    if (pin.length != 4) {
+      setState(() => _error = 'Enter 4-digit PIN');
+      return;
+    }
+    final err = await ref.read(authProvider.notifier).loginWithPin(pin);
+    if (err == null && mounted) {
+      context.go('/');
+    } else if (mounted) {
       setState(() {
-        _error = 'Incorrect PIN';
+        _error = err ?? 'Incorrect PIN';
         _pinController.clear();
       });
     }
@@ -171,6 +184,14 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
                           ),
                         ),
                       ],
+                      const SizedBox(height: 12),
+                      TextButton(
+                        onPressed: () async {
+                          await ref.read(authProvider.notifier).logout();
+                          if (context.mounted) context.go('/auth');
+                        },
+                        child: const Text('Login with Email & Password', style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+                      ),
                     ],
                   ),
                 ),

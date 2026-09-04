@@ -15,6 +15,7 @@ class SecureStorage {
   static const _pinKey = 'app_pin';
   static const _biometricEnabled = 'biometric_enabled';
   static const _onboardingSeen = 'onboarding_seen';
+  static const _lastUnlockKey = 'last_unlocked';
 
   Future<void> saveToken(String token) =>
       _storage.write(key: _tokenKey, value: token);
@@ -35,8 +36,8 @@ class SecureStorage {
     final uid = await _getUserId();
     if (uid != null) {
       await _storage.write(key: '${_pinKey}_$uid', value: pin);
-      // keep global for migration
-      await _storage.write(key: _pinKey, value: pin);
+      // wipe global after per-user migration (choice 2 yes)
+      await _storage.delete(key: _pinKey);
     } else {
       await _storage.write(key: _pinKey, value: pin);
     }
@@ -60,6 +61,12 @@ class SecureStorage {
     if (uid != null) {
       final per = await _storage.read(key: '${_pinKey}_$uid');
       if (per != null) return true;
+      final global = await _storage.read(key: _pinKey);
+      if (global != null) {
+        await _storage.write(key: '${_pinKey}_$uid', value: global);
+        await _storage.delete(key: _pinKey);
+        return true;
+      }
     }
     final pin = await _storage.read(key: _pinKey);
     return pin != null;
@@ -90,6 +97,12 @@ class SecureStorage {
     if (uid != null) {
       final per = await _storage.read(key: '${_biometricEnabled}_$uid');
       if (per != null) return per == 'true';
+      final global = await _storage.read(key: _biometricEnabled);
+      if (global != null) {
+        await _storage.write(key: '${_biometricEnabled}_$uid', value: global);
+        await _storage.delete(key: _biometricEnabled);
+        return global == 'true';
+      }
     }
     final val = await _storage.read(key: _biometricEnabled);
     return val == 'true';
@@ -104,6 +117,27 @@ class SecureStorage {
   Future<void> setBiometricEnabledFor(String userId, bool enabled) =>
       _storage.write(key: '${_biometricEnabled}_$userId', value: enabled.toString());
 
+  Future<void> setLastUnlock(String userId) =>
+      _storage.write(key: '${_lastUnlockKey}_$userId', value: DateTime.now().millisecondsSinceEpoch.toString());
+
+  Future<bool> isRecentlyUnlocked(String userId, {Duration window = const Duration(minutes: 5)}) async {
+    final v = await _storage.read(key: '${_lastUnlockKey}_$userId');
+    if (v == null) return false;
+    final ts = int.tryParse(v);
+    if (ts == null) return false;
+    return DateTime.now().millisecondsSinceEpoch - ts < window.inMilliseconds;
+  }
+
+  Future<void> clearLastUnlock(String userId) => _storage.delete(key: '${_lastUnlockKey}_$userId');
+
+  Future<String?> getCurrentUserId() => _getUserId();
+
+  Future<bool> isRecentlyUnlockedCurrent({Duration window = const Duration(minutes: 5)}) async {
+    final uid = await _getUserId();
+    if (uid == null) return false;
+    return isRecentlyUnlocked(uid, window: window);
+  }
+
   Future<String?> _getUserId() async {
     try {
       final data = await _storage.read(key: _userKey);
@@ -112,6 +146,22 @@ class SecureStorage {
       return m['id'] as String?;
     } catch (_) {
       return null;
+    }
+  }
+
+  // Migrate global pin/biometric to per-user on demand
+  Future<void> migrateGlobalToPerUser(String userId) async {
+    final globalPin = await _storage.read(key: _pinKey);
+    if (globalPin != null) {
+      final per = await _storage.read(key: '${_pinKey}_$userId');
+      if (per == null) await _storage.write(key: '${_pinKey}_$userId', value: globalPin);
+      await _storage.delete(key: _pinKey);
+    }
+    final globalBio = await _storage.read(key: _biometricEnabled);
+    if (globalBio != null) {
+      final perBio = await _storage.read(key: '${_biometricEnabled}_$userId');
+      if (perBio == null) await _storage.write(key: '${_biometricEnabled}_$userId', value: globalBio);
+      await _storage.delete(key: _biometricEnabled);
     }
   }
 

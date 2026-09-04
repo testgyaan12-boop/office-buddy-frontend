@@ -57,7 +57,8 @@ class _OfficeBuddyAppState extends ConsumerState<OfficeBuddyApp> with WidgetsBin
     final storage = ref.read(secureStorageProvider);
     final hasPin = await storage.hasPin();
     final token = await storage.getToken();
-    if (hasPin && token != null && mounted) {
+    final recently = await storage.isRecentlyUnlockedCurrent();
+    if (hasPin && token != null && !recently && mounted) {
       final router = ref.read(routerProvider);
       final current = router.routerDelegate.currentConfiguration.uri.path;
       if (current != '/lock' && current != '/auth' && current != '/onboarding' && current != '/splash') {

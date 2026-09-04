@@ -50,11 +50,15 @@ class AppRouter {
       }
       if (!isLoggedIn && path != '/auth') return '/auth';
       if (isLoggedIn && path == '/auth') {
-        if (hasPin) return '/lock';
+        if (hasPin) {
+          final recently = await _secureStorage.isRecentlyUnlockedCurrent();
+          if (!recently) return '/lock';
+        }
         return '/';
       }
       if (isLoggedIn && hasPin && path != '/lock' && path != '/app-lock' && !path.startsWith('/lock')) {
-        return '/lock';
+        final recently = await _secureStorage.isRecentlyUnlockedCurrent();
+        if (!recently) return '/lock';
       }
       if (isLoggedIn && !hasPin && path == '/lock') return '/';
       return null;

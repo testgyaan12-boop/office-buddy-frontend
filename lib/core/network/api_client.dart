@@ -36,11 +36,14 @@ class ApiClient {
           handler.next(options);
         },
         onError: (error, handler) async {
-          if (error.response?.statusCode == 401) {
+          final code = error.response?.statusCode;
+          if (code == 401 || code == 403) {
             final refreshed = await _refreshToken();
             if (refreshed) {
-              final retryResponse = await _retry(error.requestOptions);
-              return handler.resolve(retryResponse);
+              try {
+                final retryResponse = await _retry(error.requestOptions);
+                return handler.resolve(retryResponse);
+              } catch (_) {}
             }
           }
           handler.next(error);
@@ -56,7 +59,12 @@ class ApiClient {
       final refreshToken = await _secureStorage.getRefreshToken();
       if (refreshToken == null) return false;
 
-      final response = await Dio().post(
+      final response = await Dio(
+        BaseOptions(
+          connectTimeout: const Duration(seconds: 10),
+          receiveTimeout: const Duration(seconds: 10),
+        ),
+      ).post(
         '${ApiEndpoints.baseUrl}${ApiEndpoints.refreshToken}',
         data: {'refreshToken': refreshToken},
       );

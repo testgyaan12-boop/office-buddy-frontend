@@ -72,6 +72,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
       await _secureStorage.saveToken(authResponse.token);
       await _secureStorage.saveRefreshToken(authResponse.refreshToken);
       await _secureStorage.saveUserData(jsonEncode(authResponse.user.toJson()));
+      // migrate global PIN/biometric to per-user if exists
+      await _secureStorage.migrateGlobalToPerUser(authResponse.user.id);
+      // set last unlock to skip immediate /lock after login (user just authenticated)
+      await _secureStorage.setLastUnlock(authResponse.user.id);
       state = AuthState(
         status: AuthStatus.authenticated,
         user: authResponse.user,
@@ -286,21 +290,34 @@ class AuthNotifier extends StateNotifier<AuthState> {
   Future<bool> hasPinSet() => _secureStorage.hasPin();
 
   Future<String?> loginWithPin(String pin) async {
-    final saved = await _secureStorage.getPin();
-    if (saved == null || saved != pin) {
-      state = const AuthState(status: AuthStatus.error, error: 'Incorrect PIN');
-      return 'Incorrect PIN';
-    }
-    final refreshed = await _apiClient.tryRefresh();
-    if (refreshed) {
-      await _checkAuth();
-      if (state.status == AuthStatus.authenticated) return null;
-    }
-    // Fallback: if refresh failed but token still valid locally, use cached user
-    final token = await _secureStorage.getToken();
-    if (token != null) {
-      await _checkAuth();
-      if (state.status == AuthStatus.authenticated) return null;
+    state = const AuthState(status: AuthStatus.loading);
+    try {
+      final saved = await _secureStorage.getPin();
+      if (saved == null || saved != pin) {
+        state = const AuthState(status: AuthStatus.error, error: 'Incorrect PIN');
+        return 'Incorrect PIN';
+      }
+      final refreshed = await _apiClient.tryRefresh().timeout(const Duration(seconds: 10), onTimeout: () => false);
+      if (refreshed) {
+        await _checkAuth();
+        if (state.status == AuthStatus.authenticated) {
+          final uid = state.user?.id;
+          if (uid != null) await _secureStorage.setLastUnlock(uid);
+          return null;
+        }
+      }
+      final token = await _secureStorage.getToken();
+      if (token != null) {
+        await _checkAuth();
+        if (state.status == AuthStatus.authenticated) {
+          final uid = state.user?.id;
+          if (uid != null) await _secureStorage.setLastUnlock(uid);
+          return null;
+        }
+      }
+    } catch (e) {
+      state = const AuthState(status: AuthStatus.error, error: 'Storage error, try again');
+      return 'Storage error';
     }
     state = const AuthState(status: AuthStatus.error, error: 'Session expired, please login with password');
     return 'Session expired, please login with password';
