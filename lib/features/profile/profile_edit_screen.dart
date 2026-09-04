@@ -123,6 +123,34 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
     final name = _nameController.text.trim();
     if (name.isEmpty) return;
 
+    final confirmed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(color: AppColors.primary.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(8)),
+              child: const Icon(Icons.save_rounded, color: AppColors.primary, size: 18),
+            ),
+            const SizedBox(width: 10),
+            const Text('Confirm Save', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+          ],
+        ),
+        content: const Text('Are you sure you want to save changes to your profile?', style: TextStyle(fontSize: 14, color: AppColors.textSecondary)),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel', style: TextStyle(color: AppColors.textSecondary))),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
     setState(() => _isSaving = true);
 
     if (_pickedImageBytes != null && _pickedImageName != null) {
@@ -200,7 +228,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
       body: Form(
         key: _formKey,
         child: ListView(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.fromLTRB(16, 20, 16, 24),
           children: [
             _AvatarCard(
               displayImage: displayImage,
@@ -208,7 +236,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
               initial: initial,
               onPick: _pickImage,
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 24),
             _SectionCard(
               title: 'Personal Information',
               icon: Icons.person_outline,
@@ -277,9 +305,19 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
                         label: 'Phone',
                         icon: Icons.phone,
                         hint: '+91 98765 43210',
+                        keyboardType: TextInputType.phone,
+                        validator: (v) {
+                          if (v == null || v.trim().isEmpty) return null;
+                          String d = v.replaceAll(RegExp(r'\D'), '');
+                          if (d.length == 12 && d.startsWith('91')) d = d.substring(2);
+                          if (d.length == 11 && d.startsWith('0')) d = d.substring(1);
+                          if (d.length != 10) return 'Enter 10-digit mobile number';
+                          if (!RegExp(r'^[6-9]\d{9}$').hasMatch(d)) return 'Invalid mobile number';
+                          return null;
+                        },
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 14),
                     Expanded(
                       child: DropdownButtonFormField<String>(
                         value: _bloodGroup,
@@ -301,7 +339,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
             _SectionCard(
               title: 'Professional',
               icon: Icons.business_center,
@@ -323,7 +361,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
                         hint: '₹',
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 14),
                     Expanded(
                       child: _buildField(
                         controller: _expectedSalaryController,
@@ -348,24 +386,12 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
             _SectionCard(
               title: 'Identity Documents',
               icon: Icons.verified_user,
               color: const Color(0xFFFFA726),
               children: [
-                _buildField(
-                  controller: _panController,
-                  label: 'PAN Number',
-                  icon: Icons.credit_card,
-                ),
-                _buildDivider(),
-                _buildField(
-                  controller: _aadhaarController,
-                  label: 'Aadhaar Number',
-                  icon: Icons.badge,
-                ),
-                _buildDivider(),
                 Row(
                   children: [
                     Expanded(
@@ -375,7 +401,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
                         icon: Icons.savings,
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 14),
                     Expanded(
                       child: _buildField(
                         controller: _pfController,
@@ -387,7 +413,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
             _SectionCard(
               title: 'Contact & Address',
               icon: Icons.location_on,
@@ -416,7 +442,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
                         icon: Icons.account_balance,
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 14),
                     Expanded(
                       child: _buildField(
                         controller: _ifscController,
@@ -428,7 +454,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
                 ),
               ],
             ),
-            const SizedBox(height: 32),
+            const SizedBox(height: 36),
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
@@ -465,7 +491,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
       labelText: label,
       prefixIcon: Icon(icon, size: 20, color: AppColors.textLight),
       border: InputBorder.none,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       isDense: true,
     );
   }
@@ -480,6 +506,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
     bool required = false,
     Widget? suffix,
     int maxLines = 1,
+    TextInputType? keyboardType,
     String? Function(String?)? validator,
   }) {
     return TextFormField(
@@ -487,13 +514,14 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
       initialValue: initialValue,
       readOnly: readOnly,
       maxLines: maxLines,
+      keyboardType: keyboardType,
       decoration: InputDecoration(
         labelText: required ? '$label *' : label,
         hintText: hint,
         prefixIcon: Icon(icon, size: 20, color: AppColors.textLight),
         suffixIcon: suffix,
         border: InputBorder.none,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         isDense: true,
       ),
       style: TextStyle(
@@ -504,7 +532,10 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
   }
 
   Widget _buildDivider() {
-    return const Divider(height: 1, indent: 44);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Divider(height: 1, indent: 44, color: AppColors.textLight.withValues(alpha: 0.12)),
+    );
   }
 }
 
@@ -526,18 +557,21 @@ class _AvatarCard extends StatelessWidget {
     final hasAvatar = user?.avatarUrl != null && user!.avatarUrl!.isNotEmpty;
 
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(28),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            AppColors.primary.withOpacity(0.06),
-            AppColors.secondary.withOpacity(0.03),
+            AppColors.primary.withOpacity(0.08),
+            AppColors.secondary.withOpacity(0.05),
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.primary.withOpacity(0.1)),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: AppColors.primary.withOpacity(0.12)),
+        boxShadow: [
+          BoxShadow(color: AppColors.primary.withValues(alpha: 0.06), blurRadius: 16, offset: const Offset(0, 6)),
+        ],
       ),
       child: Column(
         children: [
@@ -612,26 +646,26 @@ class _SectionCard extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
             color: AppColors.cardShadow,
-            blurRadius: 6,
-            offset: const Offset(0, 2),
+            blurRadius: 12,
+            offset: const Offset(0, 6),
           ),
         ],
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
               decoration: BoxDecoration(
-                color: color.withOpacity(0.08),
+                color: color.withOpacity(0.07),
                 border: Border(
-                  left: BorderSide(color: color, width: 3),
+                  left: BorderSide(color: color, width: 4),
                 ),
               ),
               child: Row(
@@ -657,7 +691,7 @@ class _SectionCard extends StatelessWidget {
               ),
             ),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               child: Column(children: children),
             ),
           ],

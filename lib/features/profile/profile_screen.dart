@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -32,61 +33,13 @@ class ProfileScreen extends ConsumerWidget {
             _SkillChips(skills: user.skills!),
             const SizedBox(height: 16),
           ],
-          _InfoSection(
-            title: 'Personal Details',
-            icon: Icons.person_outline,
-            color: const Color(0xFF5C6BC0),
-            items: [
-              _InfoItem(icon: Icons.person, label: 'Name', value: user?.name ?? ''),
-              _InfoItem(icon: Icons.email, label: 'Email', value: user?.email ?? ''),
-              if (user?.headline != null) _InfoItem(icon: Icons.work, label: 'Headline', value: user!.headline!),
-              if (user?.dateOfBirth != null) _InfoItem(icon: Icons.cake, label: 'DOB', value: user!.dateOfBirth!),
-              if (user?.gender != null) _InfoItem(icon: Icons.wc, label: 'Gender', value: user!.gender!),
-              if (user?.bloodGroup != null) _InfoItem(icon: Icons.bloodtype, label: 'Blood Group', value: user!.bloodGroup!),
-              if (user?.phone != null) _InfoItem(icon: Icons.phone, label: 'Phone', value: user!.phone!),
-            ],
-          ),
+          _PersonalDetailsSection(user: user),
           const SizedBox(height: 16),
-          _InfoSection(
-            title: 'Professional',
-            icon: Icons.business_center,
-            color: const Color(0xFF26A69A),
-            items: [
-              if (user?.currentCompany != null) _InfoItem(icon: Icons.business, label: 'Current Company', value: user!.currentCompany!),
-              if (user?.salary != null) _InfoItem(icon: Icons.monetization_on, label: 'Salary', value: user!.salary!),
-              if (user?.expectedSalary != null) _InfoItem(icon: Icons.trending_up, label: 'Expected', value: user!.expectedSalary!),
-              if (user?.linkedInUrl != null) _InfoItem(icon: Icons.link, label: 'LinkedIn', value: user!.linkedInUrl!, isUrl: true),
-              if (user?.portfolioUrl != null) _InfoItem(icon: Icons.web, label: 'Portfolio', value: user!.portfolioUrl!, isUrl: true),
-            ],
-          ),
-          if (_hasIdentityDocs(user)) ...[
-            const SizedBox(height: 16),
-            _InfoSection(
-              title: 'Identity Documents',
-              icon: Icons.verified_user,
-              color: const Color(0xFFFFA726),
-              items: [
-                if (user?.panNumber != null) _InfoItem(icon: Icons.credit_card, label: 'PAN', value: user!.panNumber!),
-                if (user?.aadhaarNumber != null) _InfoItem(icon: Icons.badge, label: 'Aadhaar', value: user!.aadhaarNumber!),
-                if (user?.uanNumber != null) _InfoItem(icon: Icons.savings, label: 'UAN', value: user!.uanNumber!),
-                if (user?.pfNumber != null) _InfoItem(icon: Icons.numbers, label: 'PF No.', value: user!.pfNumber!),
-              ],
-            ),
-          ],
-          if (_hasContactDocs(user)) ...[
-            const SizedBox(height: 16),
-            _InfoSection(
-              title: 'Contact & Address',
-              icon: Icons.location_on,
-              color: const Color(0xFF7E57C2),
-              items: [
-                if (user?.address != null) _InfoItem(icon: Icons.home, label: 'Address', value: user!.address!),
-                if (user?.emergencyContact != null) _InfoItem(icon: Icons.contact_emergency, label: 'Emergency', value: user!.emergencyContact!),
-                if (user?.bankAccountNumber != null) _InfoItem(icon: Icons.account_balance, label: 'Bank A/c', value: user!.bankAccountNumber!),
-                if (user?.ifscCode != null) _InfoItem(icon: Icons.code, label: 'IFSC', value: user!.ifscCode!),
-              ],
-            ),
-          ],
+          _ProfessionalSection(user: user),
+          const SizedBox(height: 16),
+          _IdentitySection(user: user),
+          const SizedBox(height: 16),
+          _ContactAddressSection(user: user),
           const SizedBox(height: 24),
           const Text(
             'Account',
@@ -123,10 +76,7 @@ class ProfileScreen extends ConsumerWidget {
   }
 
   bool _hasIdentityDocs(dynamic user) {
-    return user?.panNumber != null ||
-        user?.aadhaarNumber != null ||
-        user?.uanNumber != null ||
-        user?.pfNumber != null;
+    return user?.uanNumber != null || user?.pfNumber != null;
   }
 
   bool _hasContactDocs(dynamic user) {
@@ -142,9 +92,54 @@ class _ProfileHeader extends StatelessWidget {
 
   const _ProfileHeader({required this.user});
 
+  void _showAvatarPopup(BuildContext context, String? avatarUrl, String initial) {
+    showDialog(
+      context: context,
+      barrierColor: Colors.black.withValues(alpha: 0.75),
+      builder: (_) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.all(24),
+        child: GestureDetector(
+          onTap: () => Navigator.pop(context),
+          child: InteractiveViewer(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Hero(
+                  tag: 'profile_avatar',
+                  child: Container(
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 3),
+                      boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.3), blurRadius: 16)],
+                    ),
+                    child: CircleAvatar(
+                      radius: 110,
+                      backgroundColor: Colors.white,
+                      backgroundImage: avatarUrl != null && avatarUrl.isNotEmpty
+                          ? CachedNetworkImageProvider(avatarUrl)
+                          : null,
+                      child: avatarUrl == null || avatarUrl.isEmpty
+                          ? Text(initial, style: const TextStyle(color: AppColors.primary, fontSize: 64, fontWeight: FontWeight.bold))
+                          : null,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(user?.name ?? 'User', style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w600)),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final initial = (user?.name ?? 'U')[0].toUpperCase();
+    final initial = (user?.name != null && (user!.name as String).isNotEmpty) ? (user!.name as String)[0].toUpperCase() : 'U';
+    final avatarUrl = user?.avatarUrl as String?;
+    final hasAvatar = avatarUrl != null && avatarUrl.isNotEmpty;
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -161,28 +156,37 @@ class _ProfileHeader extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Container(
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: AppColors.primaryGradient,
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.primary.withOpacity(0.2),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            padding: const EdgeInsets.all(2),
-            child: CircleAvatar(
-              radius: 30,
-              backgroundColor: Colors.white,
-              child: Text(
-                initial,
-                style: const TextStyle(
-                  color: AppColors.primary,
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
+          GestureDetector(
+            onTap: () => _showAvatarPopup(context, avatarUrl, initial),
+            child: Container(
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: AppColors.primaryGradient,
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.primary.withOpacity(0.2),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              padding: const EdgeInsets.all(2),
+              child: Hero(
+                tag: 'profile_avatar',
+                child: CircleAvatar(
+                  radius: 30,
+                  backgroundColor: Colors.white,
+                  backgroundImage: hasAvatar ? CachedNetworkImageProvider(avatarUrl) : null,
+                  child: hasAvatar
+                      ? null
+                      : Text(
+                          initial,
+                          style: const TextStyle(
+                            color: AppColors.primary,
+                            fontSize: 28,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                 ),
               ),
             ),
@@ -222,6 +226,342 @@ class _ProfileHeader extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+String? _calculateAge(String? dobStr) {
+  if (dobStr == null || dobStr.isEmpty) return null;
+  DateTime? dob = DateTime.tryParse(dobStr);
+  if (dob == null) {
+    // Try dd-MM-yyyy or dd/MM/yyyy
+    try {
+      final parts = dobStr.split(RegExp(r'[-/]'));
+      if (parts.length == 3) {
+        // Assume dd-MM-yyyy
+        final d = int.tryParse(parts[0]);
+        final m = int.tryParse(parts[1]);
+        final y = int.tryParse(parts[2]);
+        if (d != null && m != null && y != null) {
+          if (y < 100) return null;
+          // Determine if first part is year (yyyy-MM-dd) or day
+          if (parts[0].length == 4) {
+            dob = DateTime(y, m, d);
+          } else {
+            dob = DateTime(y, m, d);
+            // Actually for dd-MM-yyyy, y is last part
+            dob = DateTime(int.parse(parts[2]), int.parse(parts[1]), int.parse(parts[0]));
+          }
+        }
+      }
+    } catch (_) {}
+  }
+  if (dob == null) return null;
+  final now = DateTime.now();
+  int age = now.year - dob.year;
+  if (now.month < dob.month || (now.month == dob.month && now.day < dob.day)) age--;
+  if (age < 0) return null;
+  return '$age yrs';
+}
+
+class _PersonalDetailsSection extends StatelessWidget {
+  final dynamic user;
+  const _PersonalDetailsSection({required this.user});
+
+  @override
+  Widget build(BuildContext context) {
+    const color = Color(0xFF5C6BC0);
+    final age = _calculateAge(user?.dateOfBirth as String?);
+    final dobValue = user?.dateOfBirth != null ? (user!.dateOfBirth as String) : '—';
+    // Try to format dob as dd-MM-yyyy if possible
+    String displayDob = dobValue;
+    if (user?.dateOfBirth != null) {
+      try {
+        final d = DateTime.parse(user!.dateOfBirth as String);
+        displayDob = '${d.day.toString().padLeft(2, '0')}-${d.month.toString().padLeft(2, '0')}-${d.year}';
+      } catch (_) {}
+    }
+
+    Widget buildItem(IconData icon, String label, String value) {
+      return Container(
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.04),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: color.withValues(alpha: 0.08)),
+        ),
+        child: _InfoRow(item: _InfoItem(icon: icon, label: label, value: value), color: color),
+      );
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [BoxShadow(color: AppColors.cardShadow, blurRadius: 6, offset: const Offset(0, 2))],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.08),
+                border: const Border(left: BorderSide(color: color, width: 3)),
+              ),
+              child: Row(
+                children: [
+                  Container(padding: const EdgeInsets.all(6), decoration: BoxDecoration(color: color.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(8)), child: Icon(Icons.person_outline, color: color, size: 18)),
+                  const SizedBox(width: 10),
+                  Text('Personal Details', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15, color: color)),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(8),
+              child: Column(
+                children: [
+                  // Row1: Name , Gender
+                  Row(
+                    children: [
+                      Expanded(child: buildItem(Icons.person, 'Name', user?.name ?? '—')),
+                      const SizedBox(width: 8),
+                      Expanded(child: buildItem(Icons.wc, 'Gender', user?.gender ?? '—')),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  // Row2: Email only full width
+                  buildItem(Icons.email, 'Email', user?.email ?? '—'),
+                  const SizedBox(height: 8),
+                  // Row3: DOB and Age
+                  Row(
+                    children: [
+                      Expanded(child: buildItem(Icons.cake, 'DOB', displayDob)),
+                      const SizedBox(width: 8),
+                      Expanded(child: buildItem(Icons.timelapse, 'Age', age ?? '—')),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  // Row4: Blood and Phone
+                  Row(
+                    children: [
+                      Expanded(child: buildItem(Icons.bloodtype, 'Blood Group', user?.bloodGroup ?? '—')),
+                      const SizedBox(width: 8),
+                      Expanded(child: buildItem(Icons.phone, 'Phone', user?.phone ?? '—')),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ProfessionalSection extends StatelessWidget {
+  final dynamic user;
+  const _ProfessionalSection({required this.user});
+
+  @override
+  Widget build(BuildContext context) {
+    const color = Color(0xFF26A69A);
+    Widget buildItem(IconData icon, String label, String value, {bool isUrl = false}) {
+      return Container(
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.04),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: color.withValues(alpha: 0.08)),
+        ),
+        child: _InfoRow(item: _InfoItem(icon: icon, label: label, value: value, isUrl: isUrl), color: color),
+      );
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [BoxShadow(color: AppColors.cardShadow, blurRadius: 6, offset: const Offset(0, 2))],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.08),
+                border: const Border(left: BorderSide(color: color, width: 3)),
+              ),
+              child: Row(
+                children: [
+                  Container(padding: const EdgeInsets.all(6), decoration: BoxDecoration(color: color.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(8)), child: Icon(Icons.business_center, color: color, size: 18)),
+                  const SizedBox(width: 10),
+                  Text('Professional', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15, color: color)),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(8),
+              child: Column(
+                children: [
+                  // Row1: Current Company only
+                  buildItem(Icons.business, 'Current Company', user?.currentCompany ?? '—'),
+                  const SizedBox(height: 8),
+                  // Row2: Salary and Expected
+                  Row(
+                    children: [
+                      Expanded(child: buildItem(Icons.monetization_on, 'Salary', user?.salary ?? '—')),
+                      const SizedBox(width: 8),
+                      Expanded(child: buildItem(Icons.trending_up, 'Expected', user?.expectedSalary ?? '—')),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  // Row3: LinkedIn only
+                  buildItem(Icons.link, 'LinkedIn', user?.linkedInUrl ?? '—', isUrl: user?.linkedInUrl != null),
+                  const SizedBox(height: 8),
+                  // Row4: Portfolio only
+                  buildItem(Icons.web, 'Portfolio', user?.portfolioUrl ?? '—', isUrl: user?.portfolioUrl != null),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _IdentitySection extends StatelessWidget {
+  final dynamic user;
+  const _IdentitySection({required this.user});
+
+  @override
+  Widget build(BuildContext context) {
+    const color = Color(0xFFFFA726);
+    if (user?.uanNumber == null && user?.pfNumber == null) return const SizedBox.shrink();
+    Widget buildItem(IconData icon, String label, String value) {
+      return Container(
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.04),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: color.withValues(alpha: 0.08)),
+        ),
+        child: _InfoRow(item: _InfoItem(icon: icon, label: label, value: value), color: color),
+      );
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [BoxShadow(color: AppColors.cardShadow, blurRadius: 6, offset: const Offset(0, 2))],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.08),
+                border: const Border(left: BorderSide(color: color, width: 3)),
+              ),
+              child: Row(
+                children: [
+                  Container(padding: const EdgeInsets.all(6), decoration: BoxDecoration(color: color.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(8)), child: Icon(Icons.verified_user, color: color, size: 18)),
+                  const SizedBox(width: 10),
+                  Text('Identity Documents', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15, color: color)),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(8),
+              child: Column(
+                children: [
+                  // Row1: UAN only full width
+                  buildItem(Icons.savings, 'UAN', user?.uanNumber ?? '—'),
+                  const SizedBox(height: 8),
+                  // Row2: PF No. only full width
+                  buildItem(Icons.numbers, 'PF No.', user?.pfNumber ?? '—'),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ContactAddressSection extends StatelessWidget {
+  final dynamic user;
+  const _ContactAddressSection({required this.user});
+
+  @override
+  Widget build(BuildContext context) {
+    const color = Color(0xFF7E57C2);
+    Widget buildItem(IconData icon, String label, String value) {
+      return Container(
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.04),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: color.withValues(alpha: 0.08)),
+        ),
+        child: _InfoRow(item: _InfoItem(icon: icon, label: label, value: value), color: color),
+      );
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [BoxShadow(color: AppColors.cardShadow, blurRadius: 6, offset: const Offset(0, 2))],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.08),
+                border: const Border(left: BorderSide(color: color, width: 3)),
+              ),
+              child: Row(
+                children: [
+                  Container(padding: const EdgeInsets.all(6), decoration: BoxDecoration(color: color.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(8)), child: Icon(Icons.location_on, color: color, size: 18)),
+                  const SizedBox(width: 10),
+                  Text('Contact & Address', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15, color: color)),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(8),
+              child: Column(
+                children: [
+                  // Row1: Address only
+                  buildItem(Icons.home, 'Address', user?.address ?? '—'),
+                  const SizedBox(height: 8),
+                  // Row2: Bank only
+                  buildItem(Icons.account_balance, 'Bank A/c', user?.bankAccountNumber ?? '—'),
+                  const SizedBox(height: 8),
+                  // Row3: IFSC only
+                  buildItem(Icons.code, 'IFSC', user?.ifscCode ?? '—'),
+                  const SizedBox(height: 8),
+                  // Row4: Contact (Emergency) only
+                  buildItem(Icons.contact_emergency, 'Emergency Contact', user?.emergencyContact ?? '—'),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -329,7 +669,31 @@ class _InfoSection extends StatelessWidget {
                 ],
               ),
             ),
-            ...items.map((item) => _InfoRow(item: item, color: color)).toList(),
+            Padding(
+              padding: const EdgeInsets.all(8),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final w = (constraints.maxWidth - 8) / 2;
+                  return Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: items
+                        .map((item) => SizedBox(
+                              width: w,
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: color.withOpacity(0.04),
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(color: color.withOpacity(0.08)),
+                                ),
+                                child: _InfoRow(item: item, color: color),
+                              ),
+                            ))
+                        .toList(),
+                  );
+                },
+              ),
+            ),
           ],
         ),
       ),
