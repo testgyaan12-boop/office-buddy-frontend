@@ -37,7 +37,9 @@ class ApiClient {
         },
         onError: (error, handler) async {
           final code = error.response?.statusCode;
-          if (code == 401 || code == 403) {
+          final retried = error.requestOptions.extra['retried'] == true;
+          if (code == 401 && !retried) {
+            error.requestOptions.extra['retried'] = true;
             final refreshed = await _refreshToken();
             if (refreshed) {
               try {

@@ -45,6 +45,7 @@ class ApiEndpoints {
   static const String jobSwitchDownload = '/job-switch/download/';
   static const String jobSwitchPackDownloadDetails = '/job-switch/pack-download-details';
   static const String jobSwitchPackDownloadDetailsAll = '/job-switch/pack-download-details/all';
+  static const String lookups = '/lookups';
 
   static const String dashboardStats = '/dashboard/stats';
 

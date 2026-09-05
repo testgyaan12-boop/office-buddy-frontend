@@ -9,6 +9,7 @@ import '../../shared/widgets/error_state.dart';
 import '../../shared/widgets/empty_state.dart';
 import '../companies/companies_provider.dart';
 import '../companies/models/company_model.dart';
+import '../dashboard/dashboard_provider.dart';
 import '../documents/documents_provider.dart';
 import '../documents/models/document_model.dart';
 import '../timeline/timeline_provider.dart';
@@ -289,17 +290,23 @@ class _DocumentsTab extends ConsumerWidget {
                             ],
                           ),
                           const SizedBox(height: 4),
-                          Row(
-                            children: [
-                              DateBadge(doc.formattedDate, icon: Icons.calendar_today, fontSize: 10),
-                              const Spacer(),
-                              InkWell(
-                                onTap: () =>
-                                    _confirmDeleteDoc(context, ref, doc),
-                                child: const Icon(Icons.delete_outline,
-                                    color: AppColors.error, size: 18),
-                              ),
-                            ],
+                          Consumer(
+                            builder: (context, ref, _) {
+                              final deletingId = ref.watch(documentsProvider).deletingId;
+                              final isDeleting = deletingId == doc.id;
+                              return Row(
+                                children: [
+                                  DateBadge(doc.formattedDate, icon: Icons.calendar_today, fontSize: 10),
+                                  const Spacer(),
+                                  isDeleting
+                                      ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.error))
+                                      : InkWell(
+                                          onTap: () => _confirmDeleteDoc(context, ref, doc),
+                                          child: const Icon(Icons.delete_outline, color: AppColors.error, size: 18),
+                                        ),
+                                ],
+                              );
+                            },
                           ),
                         ],
                       ),
@@ -791,26 +798,53 @@ class _ActionButton extends StatelessWidget {
 void _confirmDeleteDoc(BuildContext context, WidgetRef ref, DocumentModel doc) {
   showDialog(
     context: context,
-    builder: (ctx) => AlertDialog(
-      title: const Text('Delete Document'),
-      content: Text('Delete "${doc.title}"? This cannot be undone.'),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(ctx),
-          child: const Text('Cancel'),
-        ),
-        ElevatedButton(
-          onPressed: () {
-            Navigator.pop(ctx);
-            ref.read(documentsProvider.notifier).deleteDocument(doc.id);
-          },
-          style: ElevatedButton.styleFrom(
-            backgroundColor: AppColors.error,
-            foregroundColor: Colors.white,
-          ),
-          child: const Text('Delete'),
-        ),
-      ],
+    barrierDismissible: false,
+    builder: (ctx) => Consumer(
+      builder: (ctx2, ref2, _) {
+        final deletingId = ref2.watch(documentsProvider).deletingId;
+        final isDeleting = deletingId == doc.id;
+        return AlertDialog(
+          title: const Text('Delete Document'),
+          content: Text('Delete "${doc.title}"? This cannot be undone.'),
+          actions: [
+            TextButton(
+              onPressed: isDeleting ? null : () => Navigator.pop(ctx),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: isDeleting
+                  ? null
+                  : () async {
+                      await ref.read(documentsProvider.notifier).deleteDocument(doc.id);
+                      // Refresh recent (dashboard) and timeline so deleted doc disappears everywhere
+                      try {
+                        await ref.read(dashboardProvider.notifier).loadDashboard();
+                      } catch (_) {}
+                      try {
+                        await ref.read(timelineProvider.notifier).loadTimeline();
+                      } catch (_) {}
+                      if (ref.read(documentsProvider).error == null && ctx.mounted) {
+                        Navigator.pop(ctx);
+                        if (ctx.mounted) {
+                          ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(content: Text('Document deleted')));
+                        }
+                      } else if (ctx.mounted) {
+                        Navigator.pop(ctx);
+                        final err = ref.read(documentsProvider).error;
+                        if (err != null) ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text(err), backgroundColor: AppColors.error));
+                      }
+                    },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.error,
+                foregroundColor: Colors.white,
+              ),
+              child: isDeleting
+                  ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  : const Text('Delete'),
+            ),
+          ],
+        );
+      },
     ),
   );
 }

@@ -12,6 +12,8 @@ import '../../core/constants/app_colors.dart';
 import '../../core/constants/api_endpoints.dart';
 import '../../core/network/api_client.dart';
 import '../../shared/widgets/loading_shimmer.dart';
+import '../dashboard/dashboard_provider.dart';
+import '../timeline/timeline_provider.dart';
 import 'documents_provider.dart';
 import 'models/document_model.dart';
 
@@ -166,30 +168,55 @@ class _DocumentPreviewScreenState
   void _confirmDelete() {
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Delete Document'),
-        content: Text(
-            'Delete "${_document?.title ?? 'this document'}"? This cannot be undone.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              Navigator.pop(ctx);
-              await ref
-                  .read(documentsProvider.notifier)
-                  .deleteDocument(widget.documentId);
-              if (mounted) context.pop();
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.error,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('Delete'),
-          ),
-        ],
+      barrierDismissible: false,
+      builder: (ctx) => Consumer(
+        builder: (ctx2, ref2, _) {
+          final deletingId = ref2.watch(documentsProvider).deletingId;
+          final isDeleting = deletingId == widget.documentId;
+          return AlertDialog(
+            title: const Text('Delete Document'),
+            content: Text('Delete "${_document?.title ?? 'this document'}"? This cannot be undone.'),
+            actions: [
+              TextButton(
+                onPressed: isDeleting ? null : () => Navigator.pop(ctx),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                onPressed: isDeleting
+                    ? null
+                    : () async {
+                        await ref.read(documentsProvider.notifier).deleteDocument(widget.documentId);
+                        try {
+                          await ref.read(dashboardProvider.notifier).loadDashboard();
+                        } catch (_) {}
+                        try {
+                          await ref.read(timelineProvider.notifier).loadTimeline();
+                        } catch (_) {}
+                        if (ref.read(documentsProvider).error == null && ctx.mounted) {
+                          Navigator.pop(ctx);
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Document deleted')));
+                            context.pop();
+                          }
+                        } else if (ctx.mounted) {
+                          Navigator.pop(ctx);
+                          final err = ref.read(documentsProvider).error;
+                          if (err != null && mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(err), backgroundColor: AppColors.error));
+                          }
+                        }
+                      },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.error,
+                  foregroundColor: Colors.white,
+                ),
+                child: isDeleting
+                    ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                    : const Text('Delete'),
+              ),
+            ],
+          );
+        },
       ),
     );
   }

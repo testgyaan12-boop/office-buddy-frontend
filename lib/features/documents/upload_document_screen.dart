@@ -8,7 +8,9 @@ import '../../core/utils/date_formatter.dart';
 import '../companies/companies_provider.dart';
 import '../dashboard/dashboard_provider.dart';
 import 'documents_provider.dart';
+import 'lookup_provider.dart';
 import 'models/document_model.dart';
+import 'models/lookup_model.dart';
 
 class UploadDocumentScreen extends ConsumerStatefulWidget {
   const UploadDocumentScreen({super.key});
@@ -22,7 +24,7 @@ class _UploadDocumentScreenState extends ConsumerState<UploadDocumentScreen> {
   final _formKey = GlobalKey<FormState>();
   Uint8List? _selectedFileBytes;
   String? _selectedFileName;
-  String _selectedType = 'OFFER_LETTER';
+  String _selectedType = '';
   String? _selectedCompanyId;
   DateTime? _documentDate;
   final _tagsController = TextEditingController();
@@ -249,44 +251,136 @@ class _UploadDocumentScreenState extends ConsumerState<UploadDocumentScreen> {
                 const SizedBox(height: 24),
                 _SectionHeader(icon: Icons.description, text: 'Document Type', color: AppColors.primary),
                 const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
-                  value: _selectedType,
-                  decoration: InputDecoration(
-                    filled: true,
-                    fillColor: AppColors.primary.withOpacity(0.04),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: AppColors.primary),
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                  ),
-                  style: const TextStyle(fontSize: 15, color: AppColors.textPrimary),
-                  items: _documentTypes
-                      .map(
-                        (t) => DropdownMenuItem(
-                          value: t.value,
-                          child: Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(5),
-                                decoration: BoxDecoration(
-                                  color: t.color.withOpacity(0.15),
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: Icon(t.icon, size: 18, color: t.color),
-                              ),
-                              const SizedBox(width: 10),
-                              Text(t.label),
-                            ],
+                Consumer(
+                  builder: (context, ref, _) {
+                    final lookupState = ref.watch(lookupProvider);
+                    final lookups = lookupState.lookups;
+                    if (lookupState.isLoading) {
+                      return const Center(child: Padding(padding: EdgeInsets.all(12), child: CircularProgressIndicator()));
+                    }
+                    if (lookupState.error != null) {
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(10),
+                            margin: const EdgeInsets.only(bottom: 8),
+                            decoration: BoxDecoration(color: const Color(0xFFF44336).withValues(alpha: 0.08), borderRadius: BorderRadius.circular(8)),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.error_outline, color: Color(0xFFF44336), size: 16),
+                                const SizedBox(width: 8),
+                                Expanded(child: Text(lookupState.error!, style: const TextStyle(color: Color(0xFFF44336), fontSize: 12))),
+                                TextButton(onPressed: () => ref.read(lookupProvider.notifier).loadDocTypes(), child: const Text('Retry', style: TextStyle(fontSize: 12))),
+                              ],
+                            ),
                           ),
+                          // Fallback to static while error shown
+                          DropdownButtonFormField<String>(
+                            value: _selectedType.isEmpty ? null : _selectedType,
+                            decoration: InputDecoration(
+                              hintText: 'Select document type',
+                              filled: true,
+                              fillColor: AppColors.primary.withOpacity(0.04),
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: AppColors.primary)),
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                            ),
+                            validator: (v) => v == null || v.isEmpty ? 'Select document type' : null,
+                            items: _documentTypes.map((t) => DropdownMenuItem(value: t.value, child: Row(children: [Container(padding: const EdgeInsets.all(5), decoration: BoxDecoration(color: t.color.withOpacity(0.15), borderRadius: BorderRadius.circular(6)), child: Icon(t.icon, size: 18, color: t.color)), const SizedBox(width: 10), Text(t.label)]))).toList(),
+                            onChanged: (v) => setState(() => _selectedType = v!),
+                          ),
+                        ],
+                      );
+                    }
+                    if (lookups.isEmpty) {
+                      return DropdownButtonFormField<String>(
+                        value: _selectedType.isEmpty ? null : _selectedType,
+                        decoration: InputDecoration(
+                          hintText: 'Select document type',
+                          filled: true,
+                          fillColor: AppColors.primary.withOpacity(0.04),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: AppColors.primary)),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                         ),
-                      )
-                      .toList(),
-                  onChanged: (v) => setState(() => _selectedType = v!),
+                        items: _documentTypes.map((t) => DropdownMenuItem(value: t.value, child: Row(children: [Container(padding: const EdgeInsets.all(5), decoration: BoxDecoration(color: t.color.withOpacity(0.15), borderRadius: BorderRadius.circular(6)), child: Icon(t.icon, size: 18, color: t.color)), const SizedBox(width: 10), Text(t.label)]))).toList(),
+                        validator: (v) => v == null || v.isEmpty ? 'Select document type' : null,
+                        onChanged: (v) => setState(() => _selectedType = v!),
+                      );
+                    }
+                    final selectedLookup = lookups.where((l) => l.lookupCode == _selectedType).firstOrNull;
+                    return Autocomplete<LookupModel>(
+                      displayStringForOption: (opt) => opt.shortName,
+                      optionsBuilder: (TextEditingValue textEditingValue) {
+                        if (textEditingValue.text.isEmpty) return lookups;
+                        final q = textEditingValue.text.toLowerCase();
+                        return lookups.where((l) => l.shortName.toLowerCase().contains(q) || l.longName?.toLowerCase().contains(q) == true || l.lookupCode.toLowerCase().contains(q));
+                      },
+                      initialValue: selectedLookup != null ? TextEditingValue(text: selectedLookup.shortName) : null,
+                      fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
+                        return TextFormField(
+                          controller: controller,
+                          focusNode: focusNode,
+                          decoration: InputDecoration(
+                            hintText: 'Search document type',
+                            filled: true,
+                            fillColor: AppColors.primary.withOpacity(0.04),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: AppColors.primary)),
+                            prefixIcon: selectedLookup != null
+                                ? Padding(
+                                    padding: const EdgeInsets.all(8),
+                                    child: Container(
+                                      padding: const EdgeInsets.all(5),
+                                      decoration: BoxDecoration(color: selectedLookup.color.withOpacity(0.15), borderRadius: BorderRadius.circular(6)),
+                                      child: Icon(selectedLookup.icon, size: 16, color: selectedLookup.color),
+                                    ),
+                                  )
+                                : const Icon(Icons.search, color: AppColors.textLight),
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                            suffixIcon: const Icon(Icons.arrow_drop_down),
+                          ),
+                          style: const TextStyle(fontSize: 15, color: AppColors.textPrimary),
+                          validator: (v) => _selectedType.isEmpty ? 'Select document type' : null,
+                        );
+                      },
+                      onSelected: (LookupModel sel) {
+                        setState(() => _selectedType = sel.lookupCode);
+                      },
+                      optionsViewBuilder: (context, onSelected, options) {
+                        return Align(
+                          alignment: Alignment.topLeft,
+                          child: Material(
+                            elevation: 4,
+                            borderRadius: BorderRadius.circular(12),
+                            child: SizedBox(
+                              width: MediaQuery.of(context).size.width - 40,
+                              child: ListView.builder(
+                                padding: const EdgeInsets.all(8),
+                                shrinkWrap: true,
+                                itemCount: options.length,
+                                itemBuilder: (context, index) {
+                                  final opt = options.elementAt(index);
+                                  return ListTile(
+                                    leading: Container(
+                                      padding: const EdgeInsets.all(5),
+                                      decoration: BoxDecoration(color: opt.color.withOpacity(0.15), borderRadius: BorderRadius.circular(6)),
+                                      child: Icon(opt.icon, size: 16, color: opt.color),
+                                    ),
+                                    title: Text(opt.shortName, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+                                    subtitle: opt.longName != null ? Text(opt.longName!, style: const TextStyle(fontSize: 11, color: AppColors.textLight)) : null,
+                                    onTap: () => onSelected(opt),
+                                  );
+                                },
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    );
+                  },
                 ),
                 const SizedBox(height: 24),
                 _SectionHeader(icon: Icons.business, text: 'Company', color: AppColors.secondary),
