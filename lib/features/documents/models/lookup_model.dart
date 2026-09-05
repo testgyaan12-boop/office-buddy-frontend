@@ -74,6 +74,10 @@ class LookupModel {
         return Icons.trending_up;
       case 'receipt_long':
         return Icons.receipt_long;
+      case 'receipt':
+        return Icons.receipt;
+      case 'task_alt':
+        return Icons.task_alt;
       case 'verified':
         return Icons.verified;
       case 'exit_to_app':

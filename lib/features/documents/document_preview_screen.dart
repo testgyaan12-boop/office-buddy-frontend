@@ -386,10 +386,12 @@ class _DocumentPreviewScreenState
               ],
             ),
             const SizedBox(height: 8),
-            Row(
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
               children: [
-                _metaChip(doc.formattedDate, Icons.calendar_today),
-                const SizedBox(width: 8),
+                if (doc.hasDocumentDate) _metaChip('RecievedAt ${doc.formattedRecievedAt}', Icons.event),
+                _metaChip('UploadAt ${doc.formattedUploadAt}', Icons.cloud_upload),
                 _metaChip(doc.formattedSize, Icons.storage),
               ],
             ),

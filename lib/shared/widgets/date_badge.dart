@@ -19,20 +19,25 @@ class DateBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     final bgColor = (color ?? AppColors.primary).withOpacity(0.1);
     final fgColor = color ?? AppColors.primary;
+    final isSmall = fontSize <= 9;
+    final hPad = isSmall ? 6.0 : 10.0;
+    final vPad = isSmall ? 3.0 : 5.0;
+    final iconSize = isSmall ? 10.0 : 14.0;
+    final gap = isSmall ? 3.0 : 5.0;
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      padding: EdgeInsets.symmetric(horizontal: hPad, vertical: vPad),
       decoration: BoxDecoration(
         color: bgColor,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(isSmall ? 6 : 8),
         border: Border.all(color: fgColor.withOpacity(0.2)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           if (icon != null) ...[
-            Icon(icon, size: 14, color: fgColor),
-            const SizedBox(width: 5),
+            Icon(icon, size: iconSize, color: fgColor),
+            SizedBox(width: gap),
           ],
           Text(
             label,

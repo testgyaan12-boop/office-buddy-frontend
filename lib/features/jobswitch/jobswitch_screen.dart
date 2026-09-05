@@ -34,6 +34,8 @@ class JobSwitchState {
       'PAYSLIP': 3,
       'CERTIFICATE': 5,
       'RELIEVING_LETTER': 5,
+      'TDS_CERTIFICATE': 5,
+      'CONFIRMATION_LETTER': 5,
     },
     this.downloadDetails = const [],
   });
@@ -72,17 +74,24 @@ class JobSwitchNotifier extends StateNotifier<JobSwitchState> {
     final m = Map<String, int>.from(state.selectedCounts);
     if (enabled) {
       m[type] = type == 'PAYSLIP' ? 3 : 5;
-      // Experience folder toggles both CERT + RELIEVING together — handled in UI via helper
       if (type == 'EXPERIENCE') {
         m['CERTIFICATE'] = 5;
         m['RELIEVING_LETTER'] = 5;
+        m['TDS_CERTIFICATE'] = 5;
         m.remove('EXPERIENCE');
+      }
+      if (type == 'OFFER_LETTER') {
+        m['CONFIRMATION_LETTER'] = 5;
       }
     } else {
       m[type] = 0;
       if (type == 'EXPERIENCE') {
         m['CERTIFICATE'] = 0;
         m['RELIEVING_LETTER'] = 0;
+        m['TDS_CERTIFICATE'] = 0;
+      }
+      if (type == 'OFFER_LETTER') {
+        m['CONFIRMATION_LETTER'] = 0;
       }
     }
     state = state.copyWith(selectedCounts: m);
@@ -94,6 +103,10 @@ class JobSwitchNotifier extends StateNotifier<JobSwitchState> {
     if (type == 'EXPERIENCE') {
       m['CERTIFICATE'] = count.clamp(0, 20);
       m['RELIEVING_LETTER'] = count.clamp(0, 20);
+      m['TDS_CERTIFICATE'] = count.clamp(0, 20);
+    }
+    if (type == 'OFFER_LETTER') {
+      m['CONFIRMATION_LETTER'] = count.clamp(0, 20);
     }
     state = state.copyWith(selectedCounts: m);
   }
@@ -265,10 +278,10 @@ class _JobSwitchScreenState extends ConsumerState<JobSwitchScreen> {
                   const SizedBox(height: 4),
                   const Text('Choose konsa folder chahiye and kitna', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
                   const SizedBox(height: 16),
-                  _FolderSelector(folder: 'Experience Certificates', types: const ['CERTIFICATE', 'RELIEVING_LETTER'], icon: Icons.verified),
+                  _FolderSelector(folder: 'Experience Certificates', types: const ['CERTIFICATE', 'RELIEVING_LETTER', 'TDS_CERTIFICATE'], icon: Icons.verified),
                   _FolderSelector(folder: 'Payslips', types: const ['PAYSLIP'], icon: Icons.receipt_long),
                   _FolderSelector(folder: 'Joining Letters', types: const ['JOINING_LETTER'], icon: Icons.how_to_reg),
-                  _FolderSelector(folder: 'Offer Letters', types: const ['OFFER_LETTER'], icon: Icons.card_membership),
+                  _FolderSelector(folder: 'Offer Letters', types: const ['OFFER_LETTER', 'CONFIRMATION_LETTER'], icon: Icons.card_membership),
                   _FolderSelector(folder: 'Increment Letters', types: const ['INCREMENT_LETTER'], icon: Icons.trending_up),
                   const SizedBox(height: 12),
                   Container(
@@ -343,6 +356,8 @@ class _JobSwitchScreenState extends ConsumerState<JobSwitchScreen> {
             _IncludeItem(icon: Icons.card_membership, label: 'Offer Letters'),
             _IncludeItem(icon: Icons.trending_up, label: 'Increment Letters'),
             _IncludeItem(icon: Icons.receipt_long, label: 'Last 3 Months Payslips'),
+            _IncludeItem(icon: Icons.receipt, label: 'TDS Certificates'),
+            _IncludeItem(icon: Icons.task_alt, label: 'Confirmation Letters'),
             const SizedBox(height: 24),
             if (state.error != null)
               Padding(

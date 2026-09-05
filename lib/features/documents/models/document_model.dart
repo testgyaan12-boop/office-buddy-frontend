@@ -12,6 +12,8 @@ class DocumentModel {
   final String? fileUrl;
   final String? fileKey;
   final int fileSize;
+  final String? mimeType;
+  final DateTime? documentDate;
   final List<String> tags;
   final DateTime uploadedAt;
 
@@ -25,6 +27,8 @@ class DocumentModel {
     this.fileUrl,
     this.fileKey,
     this.fileSize = 0,
+    this.mimeType,
+    this.documentDate,
     this.tags = const [],
     required this.uploadedAt,
   });
@@ -39,6 +43,8 @@ class DocumentModel {
         fileUrl: json['fileUrl'] as String?,
         fileKey: json['fileKey'] as String?,
         fileSize: json['fileSize'] as int? ?? 0,
+        mimeType: json['mimeType'] as String?,
+        documentDate: json['documentDate'] != null ? DateTime.tryParse(json['documentDate'] as String) : null,
         tags: json['tags'] != null ? List<String>.from(json['tags']) : [],
         uploadedAt: json['uploadedAt'] != null
             ? DateTime.parse(json['uploadedAt'] as String)
@@ -46,7 +52,9 @@ class DocumentModel {
       );
 
   String get formattedDate => formatDate(uploadedAt);
-
+  String get formattedUploadAt => formatDate(uploadedAt);
+  String get formattedRecievedAt => documentDate != null ? formatDate(documentDate!) : '';
+  bool get hasDocumentDate => documentDate != null;
   String get formattedMonthYear => formatMonthYear(uploadedAt);
 
   String get formattedSize {
@@ -56,14 +64,31 @@ class DocumentModel {
   }
 
   bool get isPdf {
+    if (mimeType != null && mimeType!.toLowerCase() == 'application/pdf') return true;
     final name = fileName ?? '';
-    return name.toLowerCase().endsWith('.pdf');
+    if (name.toLowerCase().endsWith('.pdf')) return true;
+    final url = fileUrl ?? '';
+    if (url.toLowerCase().contains('.pdf')) return true;
+    return false;
   }
 
   bool get isImage {
-    final name = fileName ?? '';
-    final lower = name.toLowerCase();
-    return lower.endsWith('.jpg') || lower.endsWith('.jpeg') || lower.endsWith('.png');
+    if (mimeType != null && mimeType!.toLowerCase().startsWith('image/')) return true;
+    final lower = (fileName ?? '').toLowerCase();
+    final urlLower = (fileUrl ?? '').toLowerCase();
+    bool check(String s) =>
+        s.endsWith('.jpg') ||
+        s.endsWith('.jpeg') ||
+        s.endsWith('.png') ||
+        s.endsWith('.webp') ||
+        s.endsWith('.heic') ||
+        s.endsWith('.heif') ||
+        s.endsWith('.gif') ||
+        s.endsWith('.bmp') ||
+        s.endsWith('.wbmp') ||
+        s.endsWith('.tiff') ||
+        s.endsWith('.tif');
+    return check(lower) || check(urlLower);
   }
 }
 

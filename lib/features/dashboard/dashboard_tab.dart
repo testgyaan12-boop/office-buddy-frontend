@@ -234,58 +234,88 @@ class _DashboardContent extends StatelessWidget {
               child: AppCard(
                 onTap: () => context.push('/documents/preview/${doc.id}'),
                 margin: EdgeInsets.zero,
-                padding: const EdgeInsets.all(12),
-                child: Row(
+                padding: EdgeInsets.zero,
+                child: Stack(
                   children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: _docColor(doc.type).withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Icon(
-                        _docIcon(doc.type),
-                        color: _docColor(doc.type),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
+                    Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            doc.title,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w600,
-                              fontSize: 14,
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: _docColor(doc.type).withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Icon(
+                              _docIcon(doc.type),
+                              color: _docColor(doc.type),
                             ),
                           ),
-                          const SizedBox(height: 4),
-                          Text(
-                            doc.companyName ?? '',
-                            style: const TextStyle(
-                              color: AppColors.textSecondary,
-                              fontSize: 12,
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Padding(
+                                  padding: const EdgeInsets.only(right: 32),
+                                  child: Text(
+                                    doc.title,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  doc.companyName ?? '',
+                                  style: const TextStyle(
+                                    color: AppColors.textSecondary,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                                const SizedBox(height: 6),
+                          Row(
+                            children: [
+                              if (doc.hasDocumentDate) ...[
+                                DateBadge('RecievedAt ${doc.formattedRecievedAt}', icon: Icons.event, color: AppColors.accent, fontSize: 8),
+                                const SizedBox(width: 4),
+                              ],
+                              DateBadge('UploadAt ${doc.formattedUploadAt}', icon: Icons.cloud_upload, fontSize: 8),
+                            ],
+                          ),
+                              ],
                             ),
                           ),
                         ],
                       ),
                     ),
-                    DateBadge(doc.formattedDate, icon: Icons.calendar_today),
-                    const SizedBox(width: 4),
-                    Consumer(
-                      builder: (context, ref, _) {
-                        final delId = ref.watch(documentsProvider).deletingId;
-                        final isDel = delId == doc.id;
-                        return isDel
-                            ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.error))
-                            : IconButton(
-                                icon: const Icon(Icons.delete_outline, color: AppColors.error, size: 18),
-                                onPressed: () => onDeleteDocument(doc),
-                                padding: EdgeInsets.zero,
-                                constraints: const BoxConstraints(),
-                              );
-                      },
+                    Positioned(
+                      top: 6,
+                      right: 6,
+                      child: Consumer(
+                        builder: (context, ref, _) {
+                          final delId = ref.watch(documentsProvider).deletingId;
+                          final isDel = delId == doc.id;
+                          return Material(
+                            color: Colors.white,
+                            shape: const CircleBorder(),
+                            elevation: 2,
+                            child: InkWell(
+                              customBorder: const CircleBorder(),
+                              onTap: isDel ? null : () => onDeleteDocument(doc),
+                              child: Padding(
+                                padding: const EdgeInsets.all(6),
+                                child: isDel
+                                    ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.error))
+                                    : const Icon(Icons.delete_outline, color: AppColors.error, size: 14),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
                     ),
                   ],
                 ),

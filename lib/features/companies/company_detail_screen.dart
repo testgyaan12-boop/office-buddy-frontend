@@ -237,83 +237,105 @@ class _DocumentsTab extends ConsumerWidget {
                   ),
                 ],
               ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(14),
-                child: Row(
-                  children: [
-                    Container(width: 4, height: 72, color: docColor),
-                    const SizedBox(width: 12),
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: docColor.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Icon(
-                        _getDocIcon(doc.type),
-                        color: docColor,
-                        size: 22,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
+              child: Stack(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(14),
+                    child: Row(
+                      children: [
+                        Container(width: 4, height: 80, color: docColor),
+                        const SizedBox(width: 12),
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: docColor.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Icon(
+                            _getDocIcon(doc.type),
+                            color: docColor,
+                            size: 22,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Expanded(
-                                child: Text(
-                                  doc.title,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 14,
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Padding(
+                                      padding: const EdgeInsets.only(right: 28),
+                                      child: Text(
+                                        doc.title,
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                    ),
                                   ),
-                                ),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 8, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: docColor.withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: Text(
+                                      doc.type.replaceAll('_', ' '),
+                                      style: TextStyle(
+                                        color: docColor,
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 8, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: docColor.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: Text(
-                                  doc.type.replaceAll('_', ' '),
-                                  style: TextStyle(
-                                    color: docColor,
-                                    fontSize: 9,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
+                              const SizedBox(height: 4),
+                              Row(
+                                children: [
+                                  if (doc.hasDocumentDate)
+                                    DateBadge('RecievedAt ${doc.formattedRecievedAt}', icon: Icons.event, color: AppColors.accent, fontSize: 8),
+                                  if (doc.hasDocumentDate) const SizedBox(width: 4),
+                                  DateBadge('UploadAt ${doc.formattedUploadAt}', icon: Icons.cloud_upload, fontSize: 8),
+                                ],
                               ),
                             ],
                           ),
-                          const SizedBox(height: 4),
-                          Consumer(
-                            builder: (context, ref, _) {
-                              final deletingId = ref.watch(documentsProvider).deletingId;
-                              final isDeleting = deletingId == doc.id;
-                              return Row(
-                                children: [
-                                  DateBadge(doc.formattedDate, icon: Icons.calendar_today, fontSize: 10),
-                                  const Spacer(),
-                                  isDeleting
-                                      ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.error))
-                                      : InkWell(
-                                          onTap: () => _confirmDeleteDoc(context, ref, doc),
-                                          child: const Icon(Icons.delete_outline, color: AppColors.error, size: 18),
-                                        ),
-                                ],
-                              );
-                            },
-                          ),
-                        ],
-                      ),
+                        ),
+                        const SizedBox(width: 8),
+                      ],
                     ),
-                    const SizedBox(width: 8),
-                  ],
-                ),
+                  ),
+                  Positioned(
+                    top: 6,
+                    right: 6,
+                    child: Consumer(
+                      builder: (context, ref, _) {
+                        final deletingId = ref.watch(documentsProvider).deletingId;
+                        final isDeleting = deletingId == doc.id;
+                        return Material(
+                          color: Colors.white,
+                          shape: const CircleBorder(),
+                          elevation: 2,
+                          child: InkWell(
+                            customBorder: const CircleBorder(),
+                            onTap: isDeleting ? null : () => _confirmDeleteDoc(context, ref, doc),
+                            child: Padding(
+                              padding: const EdgeInsets.all(6),
+                              child: isDeleting
+                                  ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.error))
+                                  : const Icon(Icons.delete_outline, color: AppColors.error, size: 14),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
               ),
             ),
           ),

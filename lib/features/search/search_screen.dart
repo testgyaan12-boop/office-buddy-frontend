@@ -410,7 +410,11 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                                                       ),
                                                     ),
                                                   ),
-                                                  DateBadge(doc.formattedDate, fontSize: 10),
+                                                  if (doc.hasDocumentDate) ...[
+                                                    DateBadge('RecievedAt ${doc.formattedRecievedAt}', icon: Icons.event, color: AppColors.accent, fontSize: 8),
+                                                    const SizedBox(width: 4),
+                                                  ],
+                                                  DateBadge('UploadAt ${doc.formattedUploadAt}', icon: Icons.cloud_upload, fontSize: 8),
                                                 ],
                                               ),
                                             ],

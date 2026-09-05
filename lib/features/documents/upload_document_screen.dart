@@ -37,6 +37,8 @@ class _UploadDocumentScreenState extends ConsumerState<UploadDocumentScreen> {
     _DocTypeOption('PAYSLIP', 'Payslip', Icons.receipt_long, AppColors.warning),
     _DocTypeOption('CERTIFICATE', 'Certificate', Icons.verified, AppColors.accent),
     _DocTypeOption('RELIEVING_LETTER', 'Relieving Letter', Icons.exit_to_app, const Color(0xFFE17055)),
+    _DocTypeOption('TDS_CERTIFICATE', 'TDS Certificate', Icons.receipt, const Color(0xFF7C4DFF)),
+    _DocTypeOption('CONFIRMATION_LETTER', 'Confirmation Letter', Icons.task_alt, const Color(0xFF26A69A)),
   ];
 
   @override
