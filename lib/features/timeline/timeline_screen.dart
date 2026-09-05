@@ -29,7 +29,11 @@ class _TimelineScreenState extends ConsumerState<TimelineScreen> {
   Widget build(BuildContext context) {
     final state = ref.watch(timelineProvider);
     final sortedEvents = List<TimelineEvent>.from(state.events)
-      ..sort((a, b) => b.eventDate.compareTo(a.eventDate));
+      ..sort((a, b) {
+        final c = b.eventDate.compareTo(a.eventDate);
+        if (c != 0) return c;
+        return b.uploadedAt.compareTo(a.uploadedAt);
+      });
 
     return Scaffold(
       appBar: AppBar(title: const Text('Career Timeline')),

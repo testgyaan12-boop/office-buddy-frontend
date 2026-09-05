@@ -43,7 +43,12 @@ class TimelineNotifier extends StateNotifier<TimelineState> {
       );
       final events = (response.data as List)
           .map((e) => TimelineEvent.fromJson(e as Map<String, dynamic>))
-          .toList();
+          .toList()
+        ..sort((a, b) {
+          final cmp = b.eventDate.compareTo(a.eventDate);
+          if (cmp != 0) return cmp;
+          return b.uploadedAt.compareTo(a.uploadedAt);
+        });
       state = TimelineState(events: events);
     } catch (e) {
       state = state.copyWith(

@@ -242,8 +242,9 @@ class _DocumentsTab extends ConsumerWidget {
                   ClipRRect(
                     borderRadius: BorderRadius.circular(14),
                     child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Container(width: 4, height: 80, color: docColor),
+                        Container(width: 4, height: 84, color: docColor),
                         const SizedBox(width: 12),
                         Container(
                           padding: const EdgeInsets.all(10),
@@ -259,54 +260,59 @@ class _DocumentsTab extends ConsumerWidget {
                         ),
                         const SizedBox(width: 12),
                         Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: Padding(
-                                      padding: const EdgeInsets.only(right: 28),
-                                      child: Text(
-                                        doc.title,
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.w600,
-                                          fontSize: 14,
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 10),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: Padding(
+                                        padding: const EdgeInsets.only(right: 32),
+                                        child: Text(
+                                          doc.title,
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 14,
+                                          ),
                                         ),
                                       ),
                                     ),
-                                  ),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 8, vertical: 2),
-                                    decoration: BoxDecoration(
-                                      color: docColor.withOpacity(0.1),
-                                      borderRadius: BorderRadius.circular(6),
-                                    ),
-                                    child: Text(
-                                      doc.type.replaceAll('_', ' '),
-                                      style: TextStyle(
-                                        color: docColor,
-                                        fontSize: 9,
-                                        fontWeight: FontWeight.w600,
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 8, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: docColor.withOpacity(0.1),
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                      child: Text(
+                                        doc.type.replaceAll('_', ' '),
+                                        style: TextStyle(
+                                          color: docColor,
+                                          fontSize: 9,
+                                          fontWeight: FontWeight.w600,
+                                        ),
                                       ),
                                     ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 4),
-                              Row(
-                                children: [
-                                  if (doc.hasDocumentDate)
-                                    DateBadge('RecievedAt ${doc.formattedRecievedAt}', icon: Icons.event, color: AppColors.accent, fontSize: 8),
-                                  if (doc.hasDocumentDate) const SizedBox(width: 4),
-                                  DateBadge('UploadAt ${doc.formattedUploadAt}', icon: Icons.cloud_upload, fontSize: 8),
-                                ],
-                              ),
-                            ],
+                                  ],
+                                ),
+                                const SizedBox(height: 4),
+                                Row(
+                                  children: [
+                                    if (doc.hasDocumentDate)
+                                      DateBadge('RecievedAt ${doc.formattedRecievedAt}', icon: Icons.event, color: AppColors.accent, fontSize: 8),
+                                    if (doc.hasDocumentDate) const SizedBox(width: 4),
+                                    DateBadge('UploadAt ${doc.formattedUploadAt}', icon: Icons.cloud_upload, fontSize: 8),
+                                  ],
+                                ),
+                              ],
+                            ),
                           ),
                         ),
-                        const SizedBox(width: 8),
+                        const SizedBox(width: 10),
                       ],
                     ),
                   ),
@@ -402,6 +408,12 @@ class _TimelineTabState extends ConsumerState<_TimelineTab> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(timelineProvider);
+    final sorted = List<TimelineEvent>.from(state.events)
+      ..sort((a, b) {
+        final c = b.eventDate.compareTo(a.eventDate);
+        if (c != 0) return c;
+        return b.uploadedAt.compareTo(a.uploadedAt);
+      });
 
     if (state.isLoading) return const LoadingShimmer();
     if (state.error != null) {
@@ -412,7 +424,7 @@ class _TimelineTabState extends ConsumerState<_TimelineTab> {
             .loadTimeline(companyId: widget.companyId),
       );
     }
-    if (state.events.isEmpty) {
+    if (sorted.isEmpty) {
       return EmptyState(
         icon: Icons.timeline,
         title: 'No timeline events yet',
@@ -421,10 +433,10 @@ class _TimelineTabState extends ConsumerState<_TimelineTab> {
 
     return ListView.builder(
       padding: const EdgeInsets.all(16),
-      itemCount: state.events.length,
+      itemCount: sorted.length,
       itemBuilder: (context, index) {
-        final event = state.events[index];
-        final isLast = index == state.events.length - 1;
+        final event = sorted[index];
+        final isLast = index == sorted.length - 1;
         return _buildTimelineTile(event, isLast);
       },
     );
