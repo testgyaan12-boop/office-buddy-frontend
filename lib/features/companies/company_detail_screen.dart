@@ -518,11 +518,6 @@ class _TimelineTabState extends ConsumerState<_TimelineTab> {
                                         ),
                                       ),
                                     ),
-                                    const Spacer(),
-                                    DateBadge(
-                                      formatMonthYear(event.eventDate),
-                                      color: event.color,
-                                    ),
                                   ],
                                 ),
                                 const SizedBox(height: 8),
@@ -543,6 +538,32 @@ class _TimelineTabState extends ConsumerState<_TimelineTab> {
                                     ),
                                   ),
                                 ],
+                                const SizedBox(height: 10),
+                                Row(
+                                  children: [
+                                    if (event.isDocumentEvent) ...[
+                                      if (event.hasDocumentDate)
+                                        DateBadge(
+                                          'RecievedAt ${event.formattedRecievedAt}',
+                                          icon: Icons.event,
+                                          color: AppColors.accent,
+                                          fontSize: 8,
+                                        ),
+                                      if (event.hasDocumentDate) const SizedBox(width: 4),
+                                      DateBadge(
+                                        'UploadAt ${event.formattedUploadAt}',
+                                        icon: Icons.cloud_upload,
+                                        fontSize: 8,
+                                      ),
+                                    ] else
+                                      DateBadge(
+                                        formatDate(event.eventDate),
+                                        color: event.color,
+                                        fontSize: 8,
+                                        icon: Icons.event,
+                                      ),
+                                  ],
+                                ),
                               ],
                             ),
                           ),
