@@ -258,15 +258,36 @@ class _DashboardContent extends StatelessWidget {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Padding(
-                                  padding: const EdgeInsets.only(right: 32),
-                                  child: Text(
-                                    doc.title,
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 14,
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: Padding(
+                                        padding: const EdgeInsets.only(right: 32),
+                                        child: Text(
+                                          doc.title,
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 14,
+                                          ),
+                                        ),
+                                      ),
                                     ),
-                                  ),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: _docColor(doc.type).withOpacity(0.1),
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                      child: Text(
+                                        doc.type.replaceAll('_', ' '),
+                                        style: TextStyle(
+                                          color: _docColor(doc.type),
+                                          fontSize: 9,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
@@ -293,7 +314,7 @@ class _DashboardContent extends StatelessWidget {
                       ),
                     ),
                     Positioned(
-                      top: 6,
+                      bottom: 6,
                       right: 6,
                       child: Consumer(
                         builder: (context, ref, _) {
