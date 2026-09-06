@@ -196,6 +196,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
   Future<void> updateProfile({
     required String name,
     String? headline,
+    String? role,
+    String? domain,
     String? dateOfBirth,
     String? gender,
     String? phone,
@@ -220,6 +222,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
         'name': name,
       };
       if (headline != null) data['headline'] = headline;
+      if (role != null) data['role'] = role;
+      if (domain != null) data['domain'] = domain;
       if (dateOfBirth != null) data['dateOfBirth'] = dateOfBirth;
       if (gender != null) data['gender'] = gender;
       if (phone != null) data['phone'] = phone;

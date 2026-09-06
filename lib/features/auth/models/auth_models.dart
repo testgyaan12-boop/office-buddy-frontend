@@ -83,6 +83,8 @@ class UserModel {
   final String email;
   final String? avatarUrl;
   final String? headline;
+  final String? role;
+  final String? domain;
   final String? dateOfBirth;
   final String? gender;
   final String? phone;
@@ -108,6 +110,8 @@ class UserModel {
     required this.email,
     this.avatarUrl,
     this.headline,
+    this.role,
+    this.domain,
     this.dateOfBirth,
     this.gender,
     this.phone,
@@ -134,6 +138,8 @@ class UserModel {
         email: json['email'] as String,
         avatarUrl: json['avatarUrl'] as String?,
         headline: json['headline'] as String?,
+        role: json['role'] as String?,
+        domain: json['domain'] as String?,
         dateOfBirth: json['dateOfBirth'] as String?,
         gender: json['gender'] as String?,
         phone: json['phone'] as String?,
@@ -160,6 +166,8 @@ class UserModel {
         'email': email,
         'avatarUrl': avatarUrl,
         'headline': headline,
+        'role': role,
+        'domain': domain,
         'dateOfBirth': dateOfBirth,
         'gender': gender,
         'phone': phone,

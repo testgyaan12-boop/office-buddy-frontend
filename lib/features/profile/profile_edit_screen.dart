@@ -21,6 +21,8 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _nameController;
   late TextEditingController _headlineController;
+  late TextEditingController _roleController;
+  late TextEditingController _domainController;
   late TextEditingController _phoneController;
   late TextEditingController _currentCompanyController;
   late TextEditingController _salaryController;
@@ -49,6 +51,8 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
     final user = ref.read(authProvider).user;
     _nameController = TextEditingController(text: user?.name ?? '');
     _headlineController = TextEditingController(text: user?.headline ?? '');
+    _roleController = TextEditingController(text: user?.role ?? '');
+    _domainController = TextEditingController(text: user?.domain ?? '');
     _phoneController = TextEditingController(text: user?.phone ?? '');
     _currentCompanyController = TextEditingController(text: user?.currentCompany ?? '');
     _salaryController = TextEditingController(text: user?.salary ?? '');
@@ -73,6 +77,8 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
   void dispose() {
     _nameController.dispose();
     _headlineController.dispose();
+    _roleController.dispose();
+    _domainController.dispose();
     _phoneController.dispose();
     _currentCompanyController.dispose();
     _salaryController.dispose();
@@ -162,6 +168,8 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
     await ref.read(authProvider.notifier).updateProfile(
           name: name,
           headline: _headlineController.text.trim().isEmpty ? null : _headlineController.text.trim(),
+          role: _roleController.text.trim(),
+          domain: _domainController.text.trim(),
           dateOfBirth: _dateOfBirth,
           gender: _gender,
           phone: _phoneController.text.trim().isEmpty ? null : _phoneController.text.trim(),
@@ -263,6 +271,14 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
                   icon: Icons.work,
                   hint: 'e.g. Senior Flutter Developer',
                 ),
+                _buildField(
+                  controller: _roleController,
+                  label: 'Role',
+                  icon: Icons.work_outline,
+                  hint: 'e.g. Flutter Developer',
+                  required: true,
+                  validator: (v) => (v == null || v.trim().isEmpty) ? 'Role is required' : null,
+                ),
                 _buildDivider(),
                 Row(
                   children: [
@@ -349,6 +365,15 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
                   controller: _currentCompanyController,
                   label: 'Current Company',
                   icon: Icons.business,
+                ),
+                _buildDivider(),
+                _buildField(
+                  controller: _domainController,
+                  label: 'Domain',
+                  icon: Icons.domain,
+                  hint: 'e.g. IT, Healthcare, Finance',
+                  required: true,
+                  validator: (v) => (v == null || v.trim().isEmpty) ? 'Domain is required' : null,
                 ),
                 _buildDivider(),
                 Row(
