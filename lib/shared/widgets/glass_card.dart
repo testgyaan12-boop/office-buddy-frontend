@@ -68,10 +68,10 @@ class GlassCard extends StatelessWidget {
   }
 }
 
-/// Industry mesh background for full glass pages
+/// Industry mesh background for full glass pages — colorful
 class GlassMeshBackground extends StatelessWidget {
   final List<Color> colors;
-  const GlassMeshBackground({super.key, this.colors = const [Color(0xFFEEF2FF), Color(0xFFF0FDFA), Color(0xFFFFF7ED)]});
+  const GlassMeshBackground({super.key, this.colors = const [Color(0xFFE0E7FF), Color(0xFFCCFBF1), Color(0xFFFEF3C7), Color(0xFFFCE7F3)]});
 
   @override
   Widget build(BuildContext context) {
@@ -89,11 +89,11 @@ class GlassMeshBackground extends StatelessWidget {
         Positioned(
           top: -60, right: -60,
           child: Container(
-            width: 260, height: 260,
+            width: 280, height: 280,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               gradient: RadialGradient(
-                colors: [const Color(0xFF6366F1).withValues(alpha: 0.14), Colors.transparent],
+                colors: [const Color(0xFF6366F1).withValues(alpha: 0.22), Colors.transparent],
               ),
             ),
           ),
@@ -101,11 +101,11 @@ class GlassMeshBackground extends StatelessWidget {
         Positioned(
           top: 140, left: -50,
           child: Container(
-            width: 200, height: 200,
+            width: 220, height: 220,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               gradient: RadialGradient(
-                colors: [const Color(0xFF14B8A6).withValues(alpha: 0.13), Colors.transparent],
+                colors: [const Color(0xFF14B8A6).withValues(alpha: 0.20), Colors.transparent],
               ),
             ),
           ),
@@ -113,11 +113,11 @@ class GlassMeshBackground extends StatelessWidget {
         Positioned(
           bottom: 80, right: 20,
           child: Container(
-            width: 180, height: 180,
+            width: 200, height: 200,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               gradient: RadialGradient(
-                colors: [const Color(0xFFF59E0B).withValues(alpha: 0.10), Colors.transparent],
+                colors: [const Color(0xFFF59E0B).withValues(alpha: 0.18), Colors.transparent],
               ),
             ),
           ),
@@ -125,11 +125,23 @@ class GlassMeshBackground extends StatelessWidget {
         Positioned(
           bottom: -40, left: -20,
           child: Container(
-            width: 240, height: 240,
+            width: 260, height: 260,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               gradient: RadialGradient(
-                colors: [const Color(0xFF8B5CF6).withValues(alpha: 0.11), Colors.transparent],
+                colors: [const Color(0xFF8B5CF6).withValues(alpha: 0.19), Colors.transparent],
+              ),
+            ),
+          ),
+        ),
+        Positioned(
+          top: 320, right: 40,
+          child: Container(
+            width: 160, height: 160,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: RadialGradient(
+                colors: [const Color(0xFFF43F5E).withValues(alpha: 0.14), Colors.transparent],
               ),
             ),
           ),

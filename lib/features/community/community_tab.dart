@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ui';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
@@ -13,14 +14,14 @@ const _violet = Color(0xFF8B5CF6);
 const _amber = Color(0xFFF59E0B);
 
 const _cardPastels = [
-  Color(0xFFFFE4E4),
-  Color(0xFFE4F0FF),
-  Color(0xFFE4FFE4),
-  Color(0xFFFFF8E4),
-  Color(0xFFF0E4FF),
-  Color(0xFFFFEDE4),
-  Color(0xFFE4FFFA),
-  Color(0xFFF0F0FF),
+  Color(0xFFFFCDD2),
+  Color(0xFFBBDEFB),
+  Color(0xFFC8E6C9),
+  Color(0xFFFFE0B2),
+  Color(0xFFE1BEE7),
+  Color(0xFFFFCCBC),
+  Color(0xFFB2DFDB),
+  Color(0xFFD1C4E9),
 ];
 
 class CommunityTab extends ConsumerStatefulWidget {
@@ -30,6 +31,30 @@ class CommunityTab extends ConsumerStatefulWidget {
 }
 
 class _CommunityTabState extends ConsumerState<CommunityTab> {
+  final _searchController = TextEditingController();
+  String _searchQuery = '';
+  final _pageController = PageController(viewportFraction: 0.92);
+  int _currentPage = 0;
+  Timer? _carouselTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _carouselTimer = Timer.periodic(const Duration(seconds: 3), (_) {
+      if (!mounted) return;
+      final next = (_currentPage + 1) % 3;
+      _pageController.animateToPage(next, duration: const Duration(milliseconds: 350), curve: Curves.easeInOut);
+    });
+  }
+
+  @override
+  void dispose() {
+    _carouselTimer?.cancel();
+    _pageController.dispose();
+    _searchController.dispose();
+    super.dispose();
+  }
+
   Future<void> _startChat(String userId) async {
     final convId = await ref.read(communityProvider.notifier).getOrCreateConversation(userId);
     if (convId != null && mounted) context.push('/chat/$convId');
@@ -59,12 +84,6 @@ class _CommunityTabState extends ConsumerState<CommunityTab> {
     );
   }
 
-  final _searchController = TextEditingController();
-  String _searchQuery = '';
-
-  @override
-  void dispose() { _searchController.dispose(); super.dispose(); }
-
   List<Map<String, dynamic>> _filteredUsers(List<Map<String, dynamic>> users) {
     if (_searchQuery.isEmpty) return users;
     final q = _searchQuery.toLowerCase();
@@ -82,283 +101,300 @@ class _CommunityTabState extends ConsumerState<CommunityTab> {
     final users = _filteredUsers(state.allUsers);
     final conversations = state.conversations;
 
-    return Scaffold(
-      extendBodyBehindAppBar: true,
-      backgroundColor: Colors.transparent,
-      appBar: AppBar(
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+        extendBodyBehindAppBar: true,
         backgroundColor: Colors.transparent,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        flexibleSpace: ClipRect(
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-            child: Container(
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.68),
-                border: Border(bottom: BorderSide(color: Colors.white.withValues(alpha: 0.38))),
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          scrolledUnderElevation: 0,
+          flexibleSpace: ClipRect(
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.68),
+                  border: Border(bottom: BorderSide(color: Colors.white.withValues(alpha: 0.38))),
+                ),
               ),
             ),
           ),
-        ),
-        title: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(colors: [_indigo, _violet], begin: Alignment.topLeft, end: Alignment.bottomRight),
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [BoxShadow(color: _indigo.withValues(alpha: 0.25), blurRadius: 10, offset: const Offset(0, 3))],
+          title: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(colors: [_indigo, _violet], begin: Alignment.topLeft, end: Alignment.bottomRight),
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [BoxShadow(color: _indigo.withValues(alpha: 0.25), blurRadius: 10, offset: const Offset(0, 3))],
+                ),
+                child: const Icon(Icons.groups_rounded, color: Colors.white, size: 18),
               ),
-              child: const Icon(Icons.groups_rounded, color: Colors.white, size: 18),
+              const SizedBox(width: 10),
+              const Text('Community', style: TextStyle(color: Color(0xFF0F172A), fontSize: 22, fontWeight: FontWeight.w800, letterSpacing: -0.5)),
+            ],
+          ),
+          actions: [
+            Container(
+              margin: const EdgeInsets.only(right: 10),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.72),
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.white.withValues(alpha: 0.45)),
+                boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 12)],
+              ),
+              child: Stack(
+                children: [
+                  IconButton(icon: const Icon(Icons.notifications_none_rounded, color: Color(0xFF0F172A), size: 22), onPressed: () {}),
+                  if (conversations.any((c) => c.unreadCount > 0))
+                    Positioned(
+                      right: 10, top: 10,
+                      child: Container(width: 8, height: 8, decoration: const BoxDecoration(color: _amber, shape: BoxShape.circle)),
+                    ),
+                ],
+              ),
             ),
-            const SizedBox(width: 10),
-            const Text('Community', style: TextStyle(color: Color(0xFF0F172A), fontSize: 22, fontWeight: FontWeight.w800, letterSpacing: -0.5)),
           ],
         ),
-        actions: [
-          Container(
-            margin: const EdgeInsets.only(right: 10),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.72),
-              shape: BoxShape.circle,
-              border: Border.all(color: Colors.white.withValues(alpha: 0.45)),
-              boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 12)],
-            ),
-            child: Stack(
-              children: [
-                IconButton(icon: const Icon(Icons.notifications_none_rounded, color: Color(0xFF0F172A), size: 22), onPressed: () {}),
-                if (conversations.any((c) => c.unreadCount > 0))
-                  Positioned(
-                    right: 10, top: 10,
-                    child: Container(width: 8, height: 8, decoration: const BoxDecoration(color: _amber, shape: BoxShape.circle)),
-                  ),
-              ],
-            ),
-          ),
-        ],
-      ),
-      body: Stack(
+        body: Stack(
         children: [
           const GlassMeshBackground(),
           SafeArea(
             child: state.isLoading
                 ? const Center(child: CircularProgressIndicator(color: _indigo))
-                : RefreshIndicator(
-                    color: _indigo,
-                    onRefresh: () => ref.read(communityProvider.notifier).loadCommunity(),
-                    child: ListView(
-                      padding: const EdgeInsets.only(bottom: 24),
-                      children: [
-                        // PREMIUM BANNER — full glass with gradient orbs
-                        Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: GlassCard(
-                            blur: 16, opacity: 0.62, borderRadius: BorderRadius.circular(24),
-                            child: Stack(
-                              children: [
-                                Positioned(
-                                  right: -30, top: -20,
-                                  child: Container(
-                                    width: 140, height: 140,
-                                    decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      gradient: RadialGradient(colors: [_indigo.withValues(alpha: 0.14), Colors.transparent]),
+                : Column(
+                    children: [
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        height: 138,
+                        child: PageView.builder(
+                          controller: _pageController,
+                          onPageChanged: (i) => setState(() => _currentPage = i),
+                          itemCount: 3,
+                          itemBuilder: (context, index) {
+                            final titles = ['Connect. Share.\nSupport. Together!', 'Find People\nNear You', 'Grow Your\nNetwork'];
+                            final subtitles = ['Stay connected with neighbors.', 'Discover colleagues & friends.', 'Build stronger community.'];
+                            return Padding(
+                              padding: EdgeInsets.only(left: index == 0 ? 16 : 8, right: index == 2 ? 16 : 8),
+                              child: GlassCard(
+                                blur: 14, opacity: 0.68, borderRadius: BorderRadius.circular(20),
+                                child: Stack(
+                                  children: [
+                                    Positioned(
+                                      right: -20, top: -15,
+                                      child: Container(width: 100, height: 100, decoration: BoxDecoration(shape: BoxShape.circle, gradient: RadialGradient(colors: [_indigo.withValues(alpha: 0.12), Colors.transparent]))),
                                     ),
-                                  ),
-                                ),
-                                Positioned(
-                                  left: -20, bottom: -30,
-                                  child: Container(
-                                    width: 120, height: 120,
-                                    decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      gradient: RadialGradient(colors: [_teal.withValues(alpha: 0.13), Colors.transparent]),
+                                    Positioned(
+                                      left: -15, bottom: -20,
+                                      child: Container(width: 90, height: 90, decoration: BoxDecoration(shape: BoxShape.circle, gradient: RadialGradient(colors: [_teal.withValues(alpha: 0.11), Colors.transparent]))),
                                     ),
-                                  ),
-                                ),
-                                Padding(
-                                  padding: const EdgeInsets.all(20),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                                        decoration: BoxDecoration(
-                                          color: Colors.white.withValues(alpha: 0.72),
-                                          borderRadius: BorderRadius.circular(20),
-                                          border: Border.all(color: Colors.white.withValues(alpha: 0.50)),
-                                        ),
-                                        child: Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Container(width: 6, height: 6, decoration: const BoxDecoration(color: Color(0xFF10B981), shape: BoxShape.circle)),
-                                            const SizedBox(width: 6),
-                                            const Text('Live • 1.2k active', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF0F172A))),
-                                          ],
-                                        ),
-                                      ),
-                                      const SizedBox(height: 14),
-                                      const Text('Connect. Share.\nSupport. Together!', style: TextStyle(fontSize: 23, fontWeight: FontWeight.w800, height: 1.15, color: Color(0xFF0F172A), letterSpacing: -0.6)),
-                                      const SizedBox(height: 8),
-                                      Text('Stay connected with your neighbors and build a stronger community.', style: TextStyle(color: Colors.black.withValues(alpha: 0.55), height: 1.4, fontSize: 13)),
-                                      const SizedBox(height: 16),
-                                      Container(
-                                        decoration: BoxDecoration(
-                                          gradient: const LinearGradient(colors: [_indigo, _violet]),
-                                          borderRadius: BorderRadius.circular(30),
-                                          boxShadow: [BoxShadow(color: _indigo.withValues(alpha: 0.28), blurRadius: 14, offset: const Offset(0, 6))],
-                                        ),
-                                        child: ElevatedButton.icon(
-                                          style: ElevatedButton.styleFrom(
-                                            backgroundColor: Colors.transparent,
-                                            shadowColor: Colors.transparent,
-                                            foregroundColor: Colors.white,
-                                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-                                            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 11),
-                                            elevation: 0,
+                                    Padding(
+                                      padding: const EdgeInsets.all(16),
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                            decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.72), borderRadius: BorderRadius.circular(20), border: Border.all(color: Colors.white.withValues(alpha: 0.50))),
+                                            child: Row(mainAxisSize: MainAxisSize.min, children: [Container(width: 5, height: 5, decoration: const BoxDecoration(color: Color(0xFF10B981), shape: BoxShape.circle)), const SizedBox(width: 5), const Text('Live', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFF0F172A)))]),
                                           ),
-                                          onPressed: () {},
-                                          icon: const Icon(Icons.add_rounded, size: 18),
-                                          label: const Text('Create Group', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
-                                        ),
+                                          const SizedBox(height: 10),
+                                          Text(titles[index], style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, height: 1.15, color: Color(0xFF0F172A), letterSpacing: -0.5)),
+                                          const SizedBox(height: 6),
+                                          Text(subtitles[index], style: TextStyle(color: Colors.black.withValues(alpha: 0.55), height: 1.3, fontSize: 12)),
+                                        ],
                                       ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-
-                        _sectionHeader('Community Groups', 'View All', Icons.groups_rounded),
-                        ...conversations.take(3).map((c) => _groupTile(
-                          title: c.otherUserName,
-                          subtitle: c.lastMessage?.isNotEmpty == true ? c.lastMessage! : 'Tap to start conversation',
-                          status: c.unreadCount > 0 ? '${c.unreadCount} new' : 'Online',
-                          unread: c.unreadCount,
-                          onTap: () => context.push('/chat/${c.id}'),
-                        )),
-                        if (conversations.isEmpty)
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                            child: GlassCard(
-                              blur: 12, opacity: 0.58, borderRadius: BorderRadius.circular(16),
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                              child: Row(
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.all(8),
-                                    decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.70), shape: BoxShape.circle, border: Border.all(color: Colors.white.withValues(alpha: 0.45))),
-                                    child: const Icon(Icons.forum_outlined, size: 16, color: _indigo),
-                                  ),
-                                  const SizedBox(width: 10),
-                                  const Expanded(child: Text('No conversations yet. Start chatting with someone!', style: TextStyle(color: Colors.black54, fontSize: 13))),
-                                ],
-                              ),
-                            ),
-                          ),
-
-                        const SizedBox(height: 18),
-                        if (conversations.isNotEmpty) ...[
-                          _sectionHeader('Recent Conversations', '${conversations.length}', Icons.chat_bubble_outline_rounded),
-                          ...conversations.map((c) => _conversationTile(
-                            name: c.otherUserName,
-                            msg: c.lastMessage ?? '',
-                            unread: c.unreadCount,
-                            onTap: () => context.push('/chat/${c.id}'),
-                          )),
-                          const SizedBox(height: 6),
-                        ],
-
-                        const SizedBox(height: 12),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Row(
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.all(6),
-                                    decoration: BoxDecoration(
-                                      gradient: const LinearGradient(colors: [_teal, _indigo]),
-                                      borderRadius: BorderRadius.circular(8),
                                     ),
-                                    child: const Icon(Icons.people_alt_rounded, color: Colors.white, size: 14),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  const Text('Find People', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: Color(0xFF0F172A), letterSpacing: -0.3)),
-                                ],
+                                  ],
+                                ),
                               ),
-                              GlassCard(
-                                blur: 8, opacity: 0.62, borderRadius: BorderRadius.circular(20),
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                                child: Text('${users.length} available', style: const TextStyle(color: _indigo, fontSize: 11, fontWeight: FontWeight.w700)),
-                              ),
+                            );
+                          },
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: List.generate(3, (i) => Container(
+                          width: 6, height: 6, margin: const EdgeInsets.symmetric(horizontal: 3),
+                          decoration: BoxDecoration(color: _currentPage == i ? _indigo : Colors.black.withValues(alpha: 0.18), shape: BoxShape.circle),
+                        )),
+                      ),
+                      const SizedBox(height: 6),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.55),
+                            borderRadius: BorderRadius.circular(30),
+                            border: Border.all(color: Colors.white.withValues(alpha: 0.60)),
+                          ),
+                          child: TabBar(
+                            labelColor: Colors.white,
+                            unselectedLabelColor: const Color(0xFF0F172A),
+                            indicator: BoxDecoration(
+                              gradient: const LinearGradient(colors: [_indigo, _violet]),
+                              borderRadius: BorderRadius.circular(30),
+                            ),
+                            indicatorSize: TabBarIndicatorSize.tab,
+                            dividerColor: Colors.transparent,
+                            labelStyle: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
+                            unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                            tabs: const [
+                              Tab(text: 'Recent Conversations'),
+                              Tab(text: 'Connect'),
                             ],
                           ),
                         ),
-                        const SizedBox(height: 10),
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(30),
-                            child: BackdropFilter(
-                              filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-                              child: TextField(
-                                controller: _searchController,
-                                onChanged: (v) => setState(() => _searchQuery = v),
-                                style: const TextStyle(fontSize: 14, color: Color(0xFF0F172A)),
-                                decoration: InputDecoration(
-                                  hintText: 'Search by name, role, company...',
-                                  hintStyle: TextStyle(color: Colors.black.withValues(alpha: 0.35), fontSize: 13),
-                                  prefixIcon: Container(
-                                    margin: const EdgeInsets.all(6),
-                                    padding: const EdgeInsets.all(7),
-                                    decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.65), shape: BoxShape.circle, border: Border.all(color: Colors.white.withValues(alpha: 0.45))),
-                                    child: const Icon(Icons.search_rounded, color: _indigo, size: 16),
+                      ),
+                      const SizedBox(height: 8),
+                      Expanded(
+                        child: TabBarView(
+                          children: [
+                            // RECENT TAB
+                            RefreshIndicator(
+                              color: _indigo,
+                              onRefresh: () => ref.read(communityProvider.notifier).loadCommunity(),
+                              child: conversations.isEmpty
+                                  ? ListView(
+                                      children: [
+                                        Padding(
+                                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                          child: GlassCard(
+                                            blur: 12, opacity: 0.58, borderRadius: BorderRadius.circular(16),
+                                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                                            child: Row(
+                                              children: [
+                                                Container(
+                                                  padding: const EdgeInsets.all(8),
+                                                  decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.70), shape: BoxShape.circle, border: Border.all(color: Colors.white.withValues(alpha: 0.45))),
+                                                  child: const Icon(Icons.forum_outlined, size: 16, color: _indigo),
+                                                ),
+                                                const SizedBox(width: 10),
+                                                const Expanded(child: Text('No conversations yet. Start chatting with someone!', style: TextStyle(color: Colors.black54, fontSize: 13))),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    )
+                                  : ListView.builder(
+                                      padding: const EdgeInsets.fromLTRB(0, 4, 0, 16),
+                                      itemCount: conversations.length,
+                                      itemBuilder: (context, i) {
+                                        final c = conversations[i];
+                                        return _conversationTile(
+                                          name: c.otherUserName,
+                                          msg: c.lastMessage ?? '',
+                                          unread: c.unreadCount,
+                                          onTap: () => context.push('/chat/${c.id}'),
+                                        );
+                                      },
+                                    ),
+                            ),
+                            // CONNECT TAB — Find People
+                            RefreshIndicator(
+                              color: _indigo,
+                              onRefresh: () => ref.read(communityProvider.notifier).loadCommunity(),
+                              child: ListView(
+                                padding: const EdgeInsets.only(bottom: 16),
+                                children: [
+                                  Padding(
+                                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                                    child: Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Row(
+                                          children: [
+                                            Container(
+                                              padding: const EdgeInsets.all(6),
+                                              decoration: BoxDecoration(
+                                                gradient: const LinearGradient(colors: [_teal, _indigo]),
+                                                borderRadius: BorderRadius.circular(8),
+                                              ),
+                                              child: const Icon(Icons.people_alt_rounded, color: Colors.white, size: 14),
+                                            ),
+                                            const SizedBox(width: 8),
+                                            const Text('Find People', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: Color(0xFF0F172A), letterSpacing: -0.3)),
+                                          ],
+                                        ),
+                                        GlassCard(
+                                          blur: 8, opacity: 0.62, borderRadius: BorderRadius.circular(20),
+                                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                          child: Text('${users.length} available', style: const TextStyle(color: _indigo, fontSize: 11, fontWeight: FontWeight.w700)),
+                                        ),
+                                      ],
+                                    ),
                                   ),
-                                  suffixIcon: _searchQuery.isNotEmpty
-                                      ? IconButton(icon: const Icon(Icons.clear_rounded, size: 18, color: Colors.black45), onPressed: () { _searchController.clear(); setState(() => _searchQuery = ''); })
-                                      : null,
-                                  filled: true,
-                                  fillColor: Colors.white.withValues(alpha: 0.62),
-                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(30), borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.40))),
-                                  enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(30), borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.40))),
-                                  focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(30), borderSide: const BorderSide(color: _indigo, width: 1.2)),
-                                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
-                                ),
+                                  Padding(
+                                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                                    child: ClipRRect(
+                                      borderRadius: BorderRadius.circular(30),
+                                      child: BackdropFilter(
+                                        filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+                                        child: TextField(
+                                          controller: _searchController,
+                                          onChanged: (v) => setState(() => _searchQuery = v),
+                                          style: const TextStyle(fontSize: 14, color: Color(0xFF0F172A)),
+                                          decoration: InputDecoration(
+                                            hintText: 'Search by name, role, company...',
+                                            hintStyle: TextStyle(color: Colors.black.withValues(alpha: 0.35), fontSize: 13),
+                                            prefixIcon: Container(
+                                              margin: const EdgeInsets.all(6),
+                                              padding: const EdgeInsets.all(7),
+                                              decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.65), shape: BoxShape.circle, border: Border.all(color: Colors.white.withValues(alpha: 0.45))),
+                                              child: const Icon(Icons.search_rounded, color: _indigo, size: 16),
+                                            ),
+                                            suffixIcon: _searchQuery.isNotEmpty
+                                                ? IconButton(icon: const Icon(Icons.clear_rounded, size: 18, color: Colors.black45), onPressed: () { _searchController.clear(); setState(() => _searchQuery = ''); })
+                                                : null,
+                                            filled: true,
+                                            fillColor: Colors.white.withValues(alpha: 0.62),
+                                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(30), borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.40))),
+                                            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(30), borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.40))),
+                                            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(30), borderSide: const BorderSide(color: _indigo, width: 1.2)),
+                                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  if (users.isEmpty)
+                                    Padding(
+                                      padding: const EdgeInsets.symmetric(vertical: 36),
+                                      child: Center(
+                                        child: GlassCard(
+                                          blur: 12, opacity: 0.62, borderRadius: BorderRadius.circular(14),
+                                          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                                          child: Text(_searchQuery.isNotEmpty ? 'No users found' : 'No users yet', style: const TextStyle(color: Colors.black54, fontSize: 13)),
+                                        ),
+                                      ),
+                                    )
+                                  else
+                                    Padding(
+                                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                                      child: GridView.builder(
+                                        shrinkWrap: true,
+                                        physics: const NeverScrollableScrollPhysics(),
+                                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 3, mainAxisSpacing: 12, crossAxisSpacing: 12, childAspectRatio: 0.82),
+                                        itemCount: users.length,
+                                        itemBuilder: (context, i) => _userGridCard(users[i], i),
+                                      ),
+                                    ),
+                                ],
                               ),
                             ),
-                          ),
+                          ],
                         ),
-                        if (users.isEmpty)
-                          Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 36),
-                            child: Center(
-                              child: GlassCard(
-                                blur: 12, opacity: 0.62, borderRadius: BorderRadius.circular(14),
-                                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-                                child: Text(_searchQuery.isNotEmpty ? 'No users found' : 'No users yet', style: const TextStyle(color: Colors.black54, fontSize: 13)),
-                              ),
-                            ),
-                          )
-                        else
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 16),
-                            child: GridView.builder(
-                              shrinkWrap: true,
-                              physics: const NeverScrollableScrollPhysics(),
-                              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 3, mainAxisSpacing: 12, crossAxisSpacing: 12, childAspectRatio: 0.82),
-                              itemCount: users.length,
-                              itemBuilder: (context, i) => _userGridCard(users[i], i),
-                            ),
-                          ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
           ),
         ],
+      ),
       ),
     );
   }
@@ -514,11 +550,15 @@ class _CommunityTabState extends ConsumerState<CommunityTab> {
           child: Container(
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(20),
-              color: tint.withValues(alpha: 0.52),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.55), width: 1.1),
+              gradient: LinearGradient(
+                colors: [tint.withValues(alpha: 0.72), Colors.white.withValues(alpha: 0.55)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.65), width: 1.2),
               boxShadow: [
-                BoxShadow(color: tint.withValues(alpha: 0.22), blurRadius: 14, offset: const Offset(0, 6)),
-                BoxShadow(color: Colors.white.withValues(alpha: 0.45), blurRadius: 0, offset: const Offset(0, 0)),
+                BoxShadow(color: tint.withValues(alpha: 0.28), blurRadius: 16, offset: const Offset(0, 6)),
+                BoxShadow(color: Colors.white.withValues(alpha: 0.50), blurRadius: 0, offset: const Offset(0, 0)),
               ],
             ),
             child: Column(
