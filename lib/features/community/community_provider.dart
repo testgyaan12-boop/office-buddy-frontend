@@ -190,6 +190,24 @@ class CommunityNotifier extends StateNotifier<CommunityState> {
     }
   }
 
+  Future<void> cancelRequest(String requestId) async {
+    try {
+      await _apiClient.delete('${ApiEndpoints.friendRequests}/$requestId');
+      await Future.wait([loadOutgoingRequests(), loadAllUsers()]);
+    } catch (e) {
+      state = state.copyWith(error: e.toString());
+    }
+  }
+
+  Future<void> removeFriend(String friendId) async {
+    try {
+      await _apiClient.delete('${ApiEndpoints.communityFriends}/$friendId');
+      await Future.wait([loadFriends(), loadAllUsers(), loadIncomingRequests(), loadOutgoingRequests(), loadConversations()]);
+    } catch (e) {
+      state = state.copyWith(error: e.toString());
+    }
+  }
+
   Future<String?> getOrCreateConversation(String otherUserId) async {
     try {
       final res = await _apiClient.post(

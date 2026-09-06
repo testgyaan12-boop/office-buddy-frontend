@@ -5,7 +5,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../shared/widgets/glass_card.dart';
+import '../auth/auth_provider.dart';
 import 'community_provider.dart';
+import 'models/friend_request_model.dart';
 
 // Industry palette — Indigo / Teal / Violet / Amber
 const _indigo = Color(0xFF6366F1);
@@ -33,24 +35,9 @@ class CommunityTab extends ConsumerStatefulWidget {
 class _CommunityTabState extends ConsumerState<CommunityTab> {
   final _searchController = TextEditingController();
   String _searchQuery = '';
-  final _pageController = PageController(viewportFraction: 0.92);
-  int _currentPage = 0;
-  Timer? _carouselTimer;
-
-  @override
-  void initState() {
-    super.initState();
-    _carouselTimer = Timer.periodic(const Duration(seconds: 3), (_) {
-      if (!mounted) return;
-      final next = (_currentPage + 1) % 3;
-      _pageController.animateToPage(next, duration: const Duration(milliseconds: 350), curve: Curves.easeInOut);
-    });
-  }
 
   @override
   void dispose() {
-    _carouselTimer?.cancel();
-    _pageController.dispose();
     _searchController.dispose();
     super.dispose();
   }
@@ -62,6 +49,24 @@ class _CommunityTabState extends ConsumerState<CommunityTab> {
 
   Future<void> _sendRequest(String userId) async {
     await ref.read(communityProvider.notifier).sendFriendRequest(userId);
+  }
+
+  Future<void> _removeFriend(String userId) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Disconnect?'),
+        content: const Text('Are you sure you want to disconnect?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          ElevatedButton(onPressed: () => Navigator.pop(ctx, true), style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white), child: const Text('Disconnect')),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      await ref.read(communityProvider.notifier).removeFriend(userId);
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Disconnected')));
+    }
   }
 
   void _showProfileDetails(Map<String, dynamic> user) {
@@ -80,6 +85,7 @@ class _CommunityTabState extends ConsumerState<CommunityTab> {
         friendStatus: user['friendStatus'] as String?,
         onChat: () { Navigator.pop(ctx); _startChat(user['id'] as String); },
         onSendRequest: () { Navigator.pop(ctx); _sendRequest(user['id'] as String); },
+        onDisconnect: () { Navigator.pop(ctx); _removeFriend(user['id'] as String); },
       ),
     );
   }
@@ -102,7 +108,7 @@ class _CommunityTabState extends ConsumerState<CommunityTab> {
     final conversations = state.conversations;
 
     return DefaultTabController(
-      length: 2,
+      length: 3,
       child: Scaffold(
         extendBodyBehindAppBar: true,
         backgroundColor: Colors.transparent,
@@ -166,64 +172,7 @@ class _CommunityTabState extends ConsumerState<CommunityTab> {
                 ? const Center(child: CircularProgressIndicator(color: _indigo))
                 : Column(
                     children: [
-                      const SizedBox(height: 12),
-                      SizedBox(
-                        height: 138,
-                        child: PageView.builder(
-                          controller: _pageController,
-                          onPageChanged: (i) => setState(() => _currentPage = i),
-                          itemCount: 3,
-                          itemBuilder: (context, index) {
-                            final titles = ['Connect. Share.\nSupport. Together!', 'Find People\nNear You', 'Grow Your\nNetwork'];
-                            final subtitles = ['Stay connected with neighbors.', 'Discover colleagues & friends.', 'Build stronger community.'];
-                            return Padding(
-                              padding: EdgeInsets.only(left: index == 0 ? 16 : 8, right: index == 2 ? 16 : 8),
-                              child: GlassCard(
-                                blur: 14, opacity: 0.68, borderRadius: BorderRadius.circular(20),
-                                child: Stack(
-                                  children: [
-                                    Positioned(
-                                      right: -20, top: -15,
-                                      child: Container(width: 100, height: 100, decoration: BoxDecoration(shape: BoxShape.circle, gradient: RadialGradient(colors: [_indigo.withValues(alpha: 0.12), Colors.transparent]))),
-                                    ),
-                                    Positioned(
-                                      left: -15, bottom: -20,
-                                      child: Container(width: 90, height: 90, decoration: BoxDecoration(shape: BoxShape.circle, gradient: RadialGradient(colors: [_teal.withValues(alpha: 0.11), Colors.transparent]))),
-                                    ),
-                                    Padding(
-                                      padding: const EdgeInsets.all(16),
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        mainAxisAlignment: MainAxisAlignment.center,
-                                        children: [
-                                          Container(
-                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                            decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.72), borderRadius: BorderRadius.circular(20), border: Border.all(color: Colors.white.withValues(alpha: 0.50))),
-                                            child: Row(mainAxisSize: MainAxisSize.min, children: [Container(width: 5, height: 5, decoration: const BoxDecoration(color: Color(0xFF10B981), shape: BoxShape.circle)), const SizedBox(width: 5), const Text('Live', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFF0F172A)))]),
-                                          ),
-                                          const SizedBox(height: 10),
-                                          Text(titles[index], style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, height: 1.15, color: Color(0xFF0F172A), letterSpacing: -0.5)),
-                                          const SizedBox(height: 6),
-                                          Text(subtitles[index], style: TextStyle(color: Colors.black.withValues(alpha: 0.55), height: 1.3, fontSize: 12)),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: List.generate(3, (i) => Container(
-                          width: 6, height: 6, margin: const EdgeInsets.symmetric(horizontal: 3),
-                          decoration: BoxDecoration(color: _currentPage == i ? _indigo : Colors.black.withValues(alpha: 0.18), shape: BoxShape.circle),
-                        )),
-                      ),
-                      const SizedBox(height: 6),
+                      const SizedBox(height: 8),
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         child: Container(
@@ -244,7 +193,8 @@ class _CommunityTabState extends ConsumerState<CommunityTab> {
                             labelStyle: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
                             unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
                             tabs: const [
-                              Tab(text: 'Recent Conversations'),
+                              Tab(text: 'Recent'),
+                              Tab(text: 'Request'),
                               Tab(text: 'Connect'),
                             ],
                           ),
@@ -294,6 +244,55 @@ class _CommunityTabState extends ConsumerState<CommunityTab> {
                                         );
                                       },
                                     ),
+                            ),
+                            // REQUEST TAB — Pending & Accept
+                            RefreshIndicator(
+                              color: _indigo,
+                              onRefresh: () => ref.read(communityProvider.notifier).loadCommunity(),
+                              child: Builder(
+                                builder: (context) {
+                                  final incomingPending = state.incomingRequests.where((r) => r.isPending).toList();
+                                  final outgoingPending = state.outgoingRequests.where((r) => r.isPending).toList();
+                                  final incomingAccepted = state.incomingRequests.where((r) => r.isAccepted).toList();
+                                  final outgoingAccepted = state.outgoingRequests.where((r) => r.isAccepted).toList();
+                                  final allReqsRaw = [...incomingPending, ...outgoingPending, ...incomingAccepted, ...outgoingAccepted];
+                                  final allReqs = {for (var r in allReqsRaw) r.id: r}.values.toList();
+                                  if (allReqs.isEmpty) {
+                                    return ListView(
+                                      children: [
+                                        Padding(
+                                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                          child: GlassCard(
+                                            blur: 12, opacity: 0.58, borderRadius: BorderRadius.circular(16),
+                                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                                            child: Row(
+                                              children: [
+                                                Container(
+                                                  padding: const EdgeInsets.all(8),
+                                                  decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.70), shape: BoxShape.circle, border: Border.all(color: Colors.white.withValues(alpha: 0.45))),
+                                                  child: const Icon(Icons.inbox_rounded, size: 16, color: _indigo),
+                                                ),
+                                                const SizedBox(width: 10),
+                                                const Expanded(child: Text('No pending requests', style: TextStyle(color: Colors.black54, fontSize: 13))),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    );
+                                  }
+                                  return ListView.builder(
+                                    padding: const EdgeInsets.fromLTRB(0, 4, 0, 16),
+                                    itemCount: allReqs.length,
+                                    itemBuilder: (context, i) {
+                                      final r = allReqs[i];
+                                      final myId = ref.watch(authProvider).user?.id;
+                                      final isOutgoing = r.senderId == myId;
+                                      return _requestTile(r, isOutgoing: isOutgoing);
+                                    },
+                                  );
+                                },
+                              ),
                             ),
                             // CONNECT TAB — Find People
                             RefreshIndicator(
@@ -379,7 +378,7 @@ class _CommunityTabState extends ConsumerState<CommunityTab> {
                                       child: GridView.builder(
                                         shrinkWrap: true,
                                         physics: const NeverScrollableScrollPhysics(),
-                                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 3, mainAxisSpacing: 12, crossAxisSpacing: 12, childAspectRatio: 0.82),
+                                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 3, mainAxisSpacing: 12, crossAxisSpacing: 12, childAspectRatio: 0.68),
                                         itemCount: users.length,
                                         itemBuilder: (context, i) => _userGridCard(users[i], i),
                                       ),
@@ -533,6 +532,73 @@ class _CommunityTabState extends ConsumerState<CommunityTab> {
     );
   }
 
+  Widget _requestTile(FriendRequestModel req, {bool isOutgoing = false}) {
+    final displayName = isOutgoing ? (req.receiverName ?? req.senderName) : req.senderName;
+    final displayAvatar = isOutgoing ? req.receiverAvatar : req.senderAvatar;
+    final badgeLabel = isOutgoing ? (req.isPending ? 'Sent • Pending' : 'Sent • Accepted') : (req.isPending ? 'Received • Pending' : 'Received • Accepted');
+    final badgeColor = req.isPending ? _amber : _teal;
+    final badgeBg = req.isPending ? _amber.withValues(alpha: 0.15) : _teal.withValues(alpha: 0.12);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+      child: GlassCard(
+        blur: 14, opacity: 0.58, borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
+              CircleAvatar(
+                radius: 22,
+                backgroundImage: displayAvatar != null && displayAvatar.isNotEmpty ? CachedNetworkImageProvider(displayAvatar) : null,
+                backgroundColor: Colors.white,
+                child: displayAvatar == null || displayAvatar.isEmpty ? Text(displayName.isNotEmpty ? displayName[0].toUpperCase() : '?', style: const TextStyle(color: _indigo, fontWeight: FontWeight.w800)) : null,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(displayName, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: Color(0xFF0F172A))),
+                    const SizedBox(height: 2),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(color: badgeBg, borderRadius: BorderRadius.circular(6)),
+                      child: Text(badgeLabel, style: TextStyle(color: req.isPending ? const Color(0xFFB45309) : badgeColor, fontSize: 10, fontWeight: FontWeight.w700)),
+                    ),
+                  ],
+                ),
+              ),
+              if (req.isPending && !isOutgoing) ...[
+                ElevatedButton(
+                  onPressed: () => ref.read(communityProvider.notifier).acceptRequest(req.id),
+                  style: ElevatedButton.styleFrom(backgroundColor: _indigo, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)), elevation: 0),
+                  child: const Text('Accept', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+                ),
+                const SizedBox(width: 8),
+                OutlinedButton(
+                  onPressed: () => ref.read(communityProvider.notifier).rejectRequest(req.id),
+                  style: OutlinedButton.styleFrom(foregroundColor: const Color(0xFF0F172A), side: BorderSide(color: Colors.black12), padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20))),
+                  child: const Text('Reject', style: TextStyle(fontSize: 12)),
+                ),
+              ] else if (req.isPending && isOutgoing)
+                OutlinedButton.icon(
+                  onPressed: () => ref.read(communityProvider.notifier).cancelRequest(req.id),
+                  icon: const Icon(Icons.undo_rounded, size: 14),
+                  label: const Text('Undo', style: TextStyle(fontSize: 12)),
+                  style: OutlinedButton.styleFrom(foregroundColor: const Color(0xFFB45309), side: BorderSide(color: _amber.withValues(alpha: 0.5)), padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20))),
+                )
+              else
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(color: _teal.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(20)),
+                  child: const Row(mainAxisSize: MainAxisSize.min, children: [Icon(Icons.check_circle, size: 14, color: _teal), SizedBox(width: 4), Text('Accepted', style: TextStyle(color: _teal, fontSize: 11, fontWeight: FontWeight.w700))]),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _userGridCard(Map<String, dynamic> user, int index) {
     final name = user['name'] as String? ?? '';
     final avatar = user['avatarUrl'] as String?;
@@ -600,16 +666,22 @@ class _CommunityTabState extends ConsumerState<CommunityTab> {
                     padding: const EdgeInsets.fromLTRB(6, 2, 6, 0),
                     child: Text(role, maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center, style: TextStyle(fontSize: 9, color: Colors.black.withValues(alpha: 0.52), fontWeight: FontWeight.w600)),
                   ),
-                SizedBox(height: role != null && role.isNotEmpty ? 6 : 10),
+                SizedBox(height: role != null && role.isNotEmpty ? 3 : 6),
                 Container(height: 1, color: Colors.white.withValues(alpha: 0.55)),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                  decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.38)),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.92),
+                    border: Border(top: BorderSide(color: Colors.white.withValues(alpha: 0.75))),
+                  ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      _glassIconButton(Icons.chat_bubble_outline_rounded, () => _startChat(userId)),
-                      _glassIconButton(Icons.person_outline_rounded, () => _showProfileDetails(user)),
+                      _glassIconButton(Icons.chat_bubble_rounded, () => _startChat(userId)),
+                      if ((user['friendStatus'] as String?) == 'ACCEPTED')
+                        _glassIconButton(Icons.link_off_rounded, () => _removeFriend(userId))
+                      else
+                        _glassIconButton(Icons.person_rounded, () => _showProfileDetails(user)),
                     ],
                   ),
                 ),
@@ -622,17 +694,18 @@ class _CommunityTabState extends ConsumerState<CommunityTab> {
   }
 
   Widget _glassIconButton(IconData icon, VoidCallback onTap) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(6),
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.72),
-          borderRadius: BorderRadius.circular(9),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.55)),
-          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 6)],
+    return Material(
+      color: Colors.white,
+      shape: CircleBorder(side: BorderSide(color: _indigo.withValues(alpha: 0.15))),
+      elevation: 3,
+      shadowColor: Colors.black.withValues(alpha: 0.12),
+      child: InkWell(
+        customBorder: const CircleBorder(),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(7),
+          child: Icon(icon, size: 17, color: _indigo),
         ),
-        child: Icon(icon, size: 13, color: const Color(0xFF0F172A)),
       ),
     );
   }
@@ -648,8 +721,8 @@ class _CommunityTabState extends ConsumerState<CommunityTab> {
 }
 
 class _ProfileSheet extends ConsumerStatefulWidget {
-  final String userId; final String name; final String? avatar; final String? headline; final String? company; final String? skills; final String? email; final String? friendStatus; final VoidCallback onChat; final VoidCallback onSendRequest;
-  const _ProfileSheet({required this.userId, required this.name, this.avatar, this.headline, this.company, this.skills, this.email, this.friendStatus, required this.onChat, required this.onSendRequest});
+  final String userId; final String name; final String? avatar; final String? headline; final String? company; final String? skills; final String? email; final String? friendStatus; final VoidCallback onChat; final VoidCallback onSendRequest; final VoidCallback? onDisconnect;
+  const _ProfileSheet({required this.userId, required this.name, this.avatar, this.headline, this.company, this.skills, this.email, this.friendStatus, required this.onChat, required this.onSendRequest, this.onDisconnect});
   @override
   ConsumerState<_ProfileSheet> createState() => _ProfileSheetState();
 }
@@ -850,23 +923,36 @@ class _ProfileSheetState extends ConsumerState<_ProfileSheet> {
                                     ],
                                   ),
                                 )
-                              : Container(
-                                  decoration: BoxDecoration(
-                                    gradient: const LinearGradient(colors: [_indigo, _violet]),
-                                    borderRadius: BorderRadius.circular(14),
-                                    boxShadow: [BoxShadow(color: _indigo.withValues(alpha: 0.28), blurRadius: 14, offset: const Offset(0, 6))],
-                                  ),
-                                  child: ElevatedButton.icon(
-                                    onPressed: widget.friendStatus == null ? widget.onSendRequest : null,
-                                    icon: Icon(widget.friendStatus == 'ACCEPTED' ? Icons.chat_rounded : Icons.person_add_rounded, size: 17),
-                                    label: Text(widget.friendStatus == 'ACCEPTED' ? 'Message' : 'Add Friend', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: Colors.transparent, shadowColor: Colors.transparent,
-                                      foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 14),
-                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)), elevation: 0,
+                              : widget.friendStatus == 'ACCEPTED'
+                                  ? ElevatedButton.icon(
+                                      onPressed: widget.onDisconnect,
+                                      icon: const Icon(Icons.link_off_rounded, size: 17),
+                                      label: const Text('Disconnect', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: const Color(0xFFE53935),
+                                        foregroundColor: Colors.white,
+                                        padding: const EdgeInsets.symmetric(vertical: 14),
+                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                                        elevation: 0,
+                                      ),
+                                    )
+                                  : Container(
+                                      decoration: BoxDecoration(
+                                        gradient: const LinearGradient(colors: [_indigo, _violet]),
+                                        borderRadius: BorderRadius.circular(14),
+                                        boxShadow: [BoxShadow(color: _indigo.withValues(alpha: 0.28), blurRadius: 14, offset: const Offset(0, 6))],
+                                      ),
+                                      child: ElevatedButton.icon(
+                                        onPressed: widget.onSendRequest,
+                                        icon: const Icon(Icons.person_add_rounded, size: 17),
+                                        label: const Text('Add Friend', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: Colors.transparent, shadowColor: Colors.transparent,
+                                          foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 14),
+                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)), elevation: 0,
+                                        ),
+                                      ),
                                     ),
-                                  ),
-                                ),
                         ),
                       ],
                     ),
@@ -961,3 +1047,6 @@ class _ProfileSheetState extends ConsumerState<_ProfileSheet> {
     try { final dt = DateTime.parse(iso); return '${dt.day}-${dt.month}-${dt.year}'; } catch (_) { return iso; }
   }
 }
+
+
+
