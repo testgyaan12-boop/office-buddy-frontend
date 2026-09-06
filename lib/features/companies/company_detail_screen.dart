@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/utils/date_formatter.dart';
+import '../../shared/widgets/app_card.dart';
 import '../../shared/widgets/date_badge.dart';
 import '../../shared/widgets/loading_shimmer.dart';
 import '../../shared/widgets/error_state.dart';
@@ -220,104 +221,83 @@ class _DocumentsTab extends ConsumerWidget {
       itemCount: docState.documents.length,
       itemBuilder: (context, index) {
         final doc = docState.documents[index];
-        final docColor = _getDocColor(doc.type);
         return Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
-          child: GestureDetector(
+          padding: const EdgeInsets.only(bottom: 8, left: 16, right: 16),
+          child: AppCard(
             onTap: () => context.push('/documents/preview/${doc.id}'),
-            child: Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(14),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.cardShadow,
-                    blurRadius: 6,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Stack(
-                children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(14),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Container(width: 4, height: 84, color: docColor),
-                        const SizedBox(width: 12),
-                        Container(
-                          padding: const EdgeInsets.all(10),
-                          decoration: BoxDecoration(
-                            color: docColor.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Icon(
-                            _getDocIcon(doc.type),
-                            color: docColor,
-                            size: 22,
-                          ),
+            margin: EdgeInsets.zero,
+            padding: EdgeInsets.zero,
+            child: Stack(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: _getDocColor(doc.type).withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 10),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                        child: Icon(
+                          _getDocIcon(doc.type),
+                          color: _getDocColor(doc.type),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
                               children: [
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: Padding(
-                                        padding: const EdgeInsets.only(right: 32),
-                                        child: Text(
-                                          doc.title,
-                                          maxLines: 2,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.w600,
-                                            fontSize: 14,
-                                          ),
-                                        ),
+                                Expanded(
+                                  child: Padding(
+                                    padding: const EdgeInsets.only(right: 32),
+                                    child: Text(
+                                      doc.title,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 14,
                                       ),
                                     ),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 8, vertical: 2),
-                                      decoration: BoxDecoration(
-                                        color: docColor.withOpacity(0.1),
-                                        borderRadius: BorderRadius.circular(6),
-                                      ),
-                                      child: Text(
-                                        doc.type.replaceAll('_', ' '),
-                                        style: TextStyle(
-                                          color: docColor,
-                                          fontSize: 9,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
+                                  ),
                                 ),
-                                const SizedBox(height: 4),
-                                Row(
-                                  children: [
-                                    if (doc.hasDocumentDate)
-                                      DateBadge('RecievedAt ${doc.formattedRecievedAt}', icon: Icons.event, color: AppColors.accent, fontSize: 8),
-                                    if (doc.hasDocumentDate) const SizedBox(width: 4),
-                                    DateBadge('UploadAt ${doc.formattedUploadAt}', icon: Icons.cloud_upload, fontSize: 8),
-                                  ],
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: _getDocColor(doc.type).withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Text(
+                                    doc.type.replaceAll('_', ' '),
+                                    style: TextStyle(
+                                      color: _getDocColor(doc.type),
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
                                 ),
                               ],
                             ),
-                          ),
+                            const SizedBox(height: 6),
+                            Row(
+                              children: [
+                                if (doc.hasDocumentDate)
+                                  DateBadge('RecievedAt ${doc.formattedRecievedAt}', icon: Icons.event, color: AppColors.accent, fontSize: 8),
+                                if (doc.hasDocumentDate) const SizedBox(width: 4),
+                                DateBadge('UploadAt ${doc.formattedUploadAt}', icon: Icons.cloud_upload, fontSize: 8),
+                              ],
+                            ),
+                          ],
                         ),
-                        const SizedBox(width: 10),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
+                ),
                   Positioned(
-                    top: 6,
+                    bottom: 6,
                     right: 6,
                     child: Consumer(
                       builder: (context, ref, _) {
@@ -344,10 +324,9 @@ class _DocumentsTab extends ConsumerWidget {
                 ],
               ),
             ),
-          ),
-        );
-      },
-    );
+          );
+        },
+      );
   }
 
   Color _getDocColor(String type) {
@@ -410,9 +389,9 @@ class _TimelineTabState extends ConsumerState<_TimelineTab> {
     final state = ref.watch(timelineProvider);
     final sorted = List<TimelineEvent>.from(state.events)
       ..sort((a, b) {
-        final c = b.eventDate.compareTo(a.eventDate);
+        final c = b.uploadedAt.compareTo(a.uploadedAt);
         if (c != 0) return c;
-        return b.uploadedAt.compareTo(a.uploadedAt);
+        return b.eventDate.compareTo(a.eventDate);
       });
 
     if (state.isLoading) return const LoadingShimmer();

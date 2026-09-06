@@ -16,9 +16,9 @@ class TimelineTab extends ConsumerWidget {
     final state = ref.watch(timelineProvider);
     final sortedEvents = List<TimelineEvent>.from(state.events)
       ..sort((a, b) {
-        final c = b.eventDate.compareTo(a.eventDate);
+        final c = b.uploadedAt.compareTo(a.uploadedAt);
         if (c != 0) return c;
-        return b.uploadedAt.compareTo(a.uploadedAt);
+        return b.eventDate.compareTo(a.eventDate);
       });
 
     if (state.isLoading) return const LoadingShimmer();

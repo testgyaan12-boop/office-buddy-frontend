@@ -45,9 +45,9 @@ class TimelineNotifier extends StateNotifier<TimelineState> {
           .map((e) => TimelineEvent.fromJson(e as Map<String, dynamic>))
           .toList()
         ..sort((a, b) {
-          final cmp = b.eventDate.compareTo(a.eventDate);
+          final cmp = b.uploadedAt.compareTo(a.uploadedAt);
           if (cmp != 0) return cmp;
-          return b.uploadedAt.compareTo(a.uploadedAt);
+          return b.eventDate.compareTo(a.eventDate);
         });
       state = TimelineState(events: events);
     } catch (e) {
