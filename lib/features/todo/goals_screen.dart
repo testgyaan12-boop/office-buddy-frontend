@@ -502,7 +502,7 @@ class _GoalCard extends StatelessWidget {
                           Icon(Icons.calendar_today, size: 11, color: AppColors.textLight),
                           const SizedBox(width: 4),
                           Text(
-                            goal.targetDate,
+                            formatDateLower(DateTime.parse(goal.targetDate)),
                             style: const TextStyle(color: AppColors.textLight, fontSize: 11),
                           ),
                         ],
@@ -738,7 +738,7 @@ class _GoalFormSheetState extends ConsumerState<_GoalFormSheet> {
                   icon: const Icon(Icons.calendar_today, size: 16),
                   label: Text(
                     _targetDate != null
-                        ? 'Target: ${formatDate(_targetDate!)}'
+                        ? 'Target: ${formatDateLower(_targetDate!)}'
                         : 'Set target date *',
                   ),
                 ),

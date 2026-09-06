@@ -226,7 +226,7 @@ class _TodosScreenState extends ConsumerState<TodosScreen> {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          DateBadge(formatDate(_selectedDate!), fontSize: 12),
+                          DateBadge(formatDateLower(_selectedDate!), fontSize: 12),
                           const SizedBox(width: 4),
                           const Icon(Icons.close, size: 14, color: AppColors.primary),
                         ],
@@ -567,7 +567,7 @@ class _TodoItem extends StatelessWidget {
                             Icon(Icons.calendar_today, size: 11, color: AppColors.warning),
                             const SizedBox(width: 4),
                             Text(
-                              'Due: ${todo.dueDate}',
+                              'Due: ${formatDateLower(DateTime.parse(todo.dueDate!))}',
                               style: const TextStyle(
                                 color: AppColors.warning,
                                 fontSize: 11,
@@ -717,7 +717,7 @@ class _TodoFormSheetState extends ConsumerState<_TodoFormSheet> {
                   icon: const Icon(Icons.calendar_today, size: 16),
                   label: Text(
                     _dueDate != null
-                        ? formatDate(_dueDate!)
+                        ? formatDateLower(_dueDate!)
                         : 'Due date',
                   ),
                 ),

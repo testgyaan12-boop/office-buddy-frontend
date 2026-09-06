@@ -128,33 +128,35 @@ class _CompanyDetailScreenState extends ConsumerState<CompanyDetailScreen>
         ),
         actions: [
           if (company != null)
-            Container(
-              margin: const EdgeInsets.only(right: 4),
-              decoration: BoxDecoration(
-                color: AppColors.error.withOpacity(0.08),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: InkWell(
-                borderRadius: BorderRadius.circular(8),
-                onTap: () => _confirmDeleteCompany(context),
-                child: const Padding(
-                  padding: EdgeInsets.all(8),
-                  child: Icon(Icons.delete_outline, color: AppColors.error, size: 20),
+            Padding(
+              padding: const EdgeInsets.only(right: 4),
+              child: Material(
+                color: Colors.white,
+                shape: const CircleBorder(),
+                elevation: 1,
+                child: InkWell(
+                  customBorder: const CircleBorder(),
+                  onTap: () => _confirmDeleteCompany(context),
+                  child: const Padding(
+                    padding: EdgeInsets.all(8),
+                    child: Icon(Icons.delete_outline, color: AppColors.error, size: 18),
+                  ),
                 ),
               ),
             ),
-          Container(
-            margin: const EdgeInsets.only(right: 8),
-            decoration: BoxDecoration(
-              color: AppColors.primary.withOpacity(0.08),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: InkWell(
-              borderRadius: BorderRadius.circular(8),
-              onTap: () => context.push('/companies/${widget.companyId}/edit'),
-              child: const Padding(
-                padding: EdgeInsets.all(8),
-                child: Icon(Icons.edit_outlined, color: AppColors.primary, size: 20),
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: Material(
+              color: Colors.white,
+              shape: const CircleBorder(),
+              elevation: 1,
+              child: InkWell(
+                customBorder: const CircleBorder(),
+                onTap: () => context.push('/companies/${widget.companyId}/edit'),
+                child: const Padding(
+                  padding: EdgeInsets.all(8),
+                  child: Icon(Icons.edit_outlined, color: AppColors.primary, size: 18),
+                ),
               ),
             ),
           ),

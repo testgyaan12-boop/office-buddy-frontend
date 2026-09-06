@@ -4,6 +4,10 @@ String formatDate(DateTime date) {
   return DateFormat('d-MMM-yyyy').format(date);
 }
 
+String formatDateLower(DateTime date) {
+  return DateFormat('d-MMM-yyyy').format(date).toLowerCase();
+}
+
 String formatMonthYear(DateTime date) {
   return DateFormat('MMM-yyyy').format(date);
 }

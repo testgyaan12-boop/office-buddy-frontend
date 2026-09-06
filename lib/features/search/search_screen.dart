@@ -6,6 +6,7 @@ import '../../core/constants/app_colors.dart';
 import '../../core/network/api_client.dart';
 import '../../shared/widgets/date_badge.dart';
 import '../../shared/widgets/loading_shimmer.dart';
+import '../documents/lookup_provider.dart';
 import '../documents/models/document_model.dart';
 
 class SearchState {
@@ -162,6 +163,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     super.initState();
     Future.microtask(() {
       ref.read(searchProvider.notifier).loadAllDocuments();
+      ref.read(lookupProvider.notifier).loadDocTypes();
     });
   }
 
@@ -172,10 +174,13 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
   }
 
   void _performSearch() {
-    ref.read(searchProvider.notifier).search(
-          _searchController.text.trim(),
-          type: _selectedType.isNotEmpty ? _selectedType : null,
-        );
+    final q = _searchController.text.trim();
+    final type = _selectedType.isNotEmpty ? _selectedType : null;
+    if (q.isEmpty && type == null) {
+      ref.read(searchProvider.notifier).loadAllDocuments();
+      return;
+    }
+    ref.read(searchProvider.notifier).search(q, type: type);
   }
 
   @override
@@ -248,42 +253,52 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
               },
             ),
           ),
-          SizedBox(
-            height: 44,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              children: _typeFilters
-                  .map(
-                    (t) => Padding(
-                      padding: const EdgeInsets.only(right: 8),
-                      child: FilterChip(
-                        selected: _selectedType == t.value,
-                        onSelected: (selected) {
-                          setState(() {
-                            _selectedType = selected ? t.value : '';
-                          });
-                          _performSearch();
-                        },
-                        avatar: Icon(t.icon, size: 14, color: _selectedType == t.value ? Colors.white : t.color),
-                        label: Text(t.label, style: const TextStyle(fontSize: 12)),
-                        selectedColor: t.color,
-                        checkmarkColor: Colors.white,
-                        backgroundColor: t.color.withOpacity(0.08),
-                        labelStyle: TextStyle(
-                          color: _selectedType == t.value ? Colors.white : t.color,
-                          fontWeight: FontWeight.w600,
+          Consumer(
+            builder: (context, ref, _) {
+              final lookupState = ref.watch(lookupProvider);
+              final List<_DocTypeFilter> dynamicFilters = [
+                const _DocTypeFilter('', 'All', Icons.all_inclusive, AppColors.primary),
+                ...lookupState.lookups.map((l) => _DocTypeFilter(l.lookupCode, l.shortName, l.icon, l.color)),
+              ];
+              final filters = dynamicFilters.length > 1 ? dynamicFilters : _typeFilters;
+              return SizedBox(
+                height: 44,
+                child: ListView(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  children: filters
+                      .map(
+                        (t) => Padding(
+                          padding: const EdgeInsets.only(right: 8),
+                          child: FilterChip(
+                            selected: _selectedType == t.value,
+                            onSelected: (selected) {
+                              setState(() {
+                                _selectedType = selected ? t.value : '';
+                              });
+                              _performSearch();
+                            },
+                            avatar: Icon(t.icon, size: 14, color: _selectedType == t.value ? Colors.white : t.color),
+                            label: Text(t.label, style: const TextStyle(fontSize: 12)),
+                            selectedColor: t.color,
+                            checkmarkColor: Colors.white,
+                            backgroundColor: t.color.withOpacity(0.08),
+                            labelStyle: TextStyle(
+                              color: _selectedType == t.value ? Colors.white : t.color,
+                              fontWeight: FontWeight.w600,
+                            ),
+                            padding: const EdgeInsets.symmetric(horizontal: 6),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                              side: BorderSide(color: _selectedType == t.value ? t.color : t.color.withOpacity(0.3)),
+                            ),
+                          ),
                         ),
-                        padding: const EdgeInsets.symmetric(horizontal: 6),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                          side: BorderSide(color: _selectedType == t.value ? t.color : t.color.withOpacity(0.3)),
-                        ),
-                      ),
-                    ),
-                  )
-                  .toList(),
-            ),
+                      )
+                      .toList(),
+                ),
+              );
+            },
           ),
           const SizedBox(height: 4),
           Expanded(
