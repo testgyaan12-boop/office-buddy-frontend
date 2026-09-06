@@ -519,11 +519,18 @@ class _TodoItem extends StatelessWidget {
                               final saving = ref.watch(todoProvider).savingId == todo.id;
                               return saving
                                   ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.error))
-                                  : IconButton(
-                                      icon: const Icon(Icons.delete_outline, color: AppColors.error, size: 18),
-                                      onPressed: onDelete,
-                                      padding: EdgeInsets.zero,
-                                      constraints: const BoxConstraints(),
+                                  : Material(
+                                      color: Colors.white,
+                                      shape: const CircleBorder(),
+                                      elevation: 1,
+                                      child: InkWell(
+                                        customBorder: const CircleBorder(),
+                                        onTap: onDelete,
+                                        child: const Padding(
+                                          padding: EdgeInsets.all(6),
+                                          child: Icon(Icons.delete_outline, color: AppColors.error, size: 16),
+                                        ),
+                                      ),
                                     );
                             },
                           ),

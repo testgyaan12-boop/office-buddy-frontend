@@ -1,15 +1,57 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
 import '../models/goal_model.dart';
 
-class GoalTab extends StatelessWidget {
+class GoalTab extends StatefulWidget {
   final GoalModel goal;
 
   const GoalTab({super.key, required this.goal});
 
+  @override
+  State<GoalTab> createState() => _GoalTabState();
+}
+
+class _GoalTabState extends State<GoalTab> {
+  Timer? _timer;
+  late Duration _remaining;
+
+  @override
+  void initState() {
+    super.initState();
+    final target = DateTime.tryParse(widget.goal.targetDate);
+    _remaining = target?.difference(DateTime.now()) ?? Duration.zero;
+    if (!widget.goal.isCompleted) {
+      _timer = Timer.periodic(const Duration(seconds: 30), (_) => _update());
+    }
+  }
+
+  void _update() {
+    if (widget.goal.isCompleted) return;
+    final target = DateTime.tryParse(widget.goal.targetDate);
+    if (target == null) return;
+    if (mounted) setState(() => _remaining = target.difference(DateTime.now()));
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  String _format(Duration d) {
+    if (d.isNegative) return 'Overdue';
+    final days = d.inDays;
+    final hours = d.inHours % 24;
+    final mins = d.inMinutes % 60;
+    if (days > 0) return '${days}d ${hours}h ${mins}m left';
+    if (hours > 0) return '${hours}h ${mins}m left';
+    return '${mins}m left';
+  }
+
   Color _urgencyColor(int days) {
-    if (goal.isCompleted) return AppColors.success;
+    if (widget.goal.isCompleted) return AppColors.success;
     if (days <= 0) return AppColors.error;
     if (days <= 10) return AppColors.warning;
     if (days <= 20) return Colors.orange;
@@ -31,7 +73,13 @@ class GoalTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = _urgencyColor(goal.remainingDays);
+    final color = _urgencyColor(_remaining.inDays);
+    String countdownText() {
+      if (widget.goal.isCompleted) return 'Completed';
+      if (_remaining.isNegative) return _remaining.inDays.abs() > 0 ? 'Overdue ${_remaining.inDays.abs()}d' : 'Overdue';
+      return _format(_remaining);
+    }
+
     return GestureDetector(
       onTap: () => context.push('/goals'),
       child: Container(
@@ -48,11 +96,11 @@ class GoalTab extends StatelessWidget {
           children: [
             Row(
               children: [
-                Icon(_categoryIcon(goal.category), size: 16, color: color),
+                Icon(_categoryIcon(widget.goal.category), size: 16, color: color),
                 const SizedBox(width: 6),
                 Expanded(
                   child: Text(
-                    goal.title,
+                    widget.goal.title,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
@@ -68,11 +116,7 @@ class GoalTab extends StatelessWidget {
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Text(
-                goal.isCompleted
-                    ? 'Completed'
-                    : goal.isOverdue
-                        ? 'Overdue'
-                        : '${goal.remainingDays} days left',
+                countdownText(),
                 style: TextStyle(
                   color: color,
                   fontSize: 11,

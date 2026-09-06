@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/utils/date_formatter.dart';
@@ -13,10 +14,19 @@ class GoalsScreen extends ConsumerStatefulWidget {
 }
 
 class _GoalsScreenState extends ConsumerState<GoalsScreen> {
+  final _searchController = TextEditingController();
+  String _query = '';
+
   @override
   void initState() {
     super.initState();
     Future.microtask(() => ref.read(goalProvider.notifier).loadAllGoals());
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   void _showAddGoalSheet() {
@@ -27,13 +37,14 @@ class _GoalsScreenState extends ConsumerState<GoalsScreen> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (ctx) => _GoalFormSheet(
-        onSave: (title, description, targetDate, category) {
-          ref.read(goalProvider.notifier).createGoal(
+        onSave: (title, description, targetDate, category) async {
+          await ref.read(goalProvider.notifier).createGoal(
                 title: title,
                 description: description,
                 targetDate: targetDate,
                 category: category,
               );
+          if (ctx.mounted && ref.read(goalProvider).error == null) Navigator.pop(ctx);
         },
       ),
     );
@@ -51,14 +62,15 @@ class _GoalsScreenState extends ConsumerState<GoalsScreen> {
         initialDescription: goal.description,
         initialTargetDate: goal.targetDate,
         initialCategory: goal.category,
-        onSave: (title, description, targetDate, category) {
-          ref.read(goalProvider.notifier).updateGoal(
+        onSave: (title, description, targetDate, category) async {
+          await ref.read(goalProvider.notifier).updateGoal(
                 id: goal.id,
                 title: title,
                 description: description,
                 targetDate: targetDate,
                 category: category,
               );
+          if (ctx.mounted && ref.read(goalProvider).error == null) Navigator.pop(ctx);
         },
       ),
     );
@@ -193,26 +205,55 @@ class _GoalsScreenState extends ConsumerState<GoalsScreen> {
                     _GoalBanner(onAddGoal: _showAddGoalSheet),
                   ],
                 )
-              : RefreshIndicator(
-                  onRefresh: () => ref.read(goalProvider.notifier).loadAllGoals(),
-                  child: ListView(
-                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-                    children: [
-                      ...state.goals.map(
-                        (goal) => Padding(
-                          padding: const EdgeInsets.only(bottom: 12),
-                          child: _GoalCard(
-                            goal: goal,
-                            onTap: () => _showEditGoalSheet(goal),
-                            onComplete: goal.isActive ? () => _confirmComplete(goal) : null,
-                            onDelete: () => _confirmDelete(goal),
+              : Builder(
+                  builder: (context) {
+                    final q = _query.toLowerCase();
+                    final filtered = q.isEmpty
+                        ? state.goals
+                        : state.goals.where((g) => g.title.toLowerCase().contains(q) || (g.description?.toLowerCase().contains(q) ?? false) || g.category.toLowerCase().contains(q)).toList();
+                    return RefreshIndicator(
+                      onRefresh: () => ref.read(goalProvider.notifier).loadAllGoals(),
+                      child: ListView(
+                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                        children: [
+                          TextField(
+                            controller: _searchController,
+                            textInputAction: TextInputAction.search,
+                            onChanged: (v) => setState(() => _query = v),
+                            decoration: InputDecoration(
+                              hintText: 'Search goals...',
+                              prefixIcon: const Icon(Icons.search, size: 20),
+                              suffixIcon: _query.isNotEmpty
+                                  ? IconButton(icon: const Icon(Icons.clear, size: 18), onPressed: () { _searchController.clear(); setState(() => _query = ''); })
+                                  : null,
+                              filled: true,
+                              fillColor: Colors.white,
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: AppColors.textLight.withValues(alpha: 0.2))),
+                              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: AppColors.textLight.withValues(alpha: 0.2))),
+                              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.primary)),
+                            ),
                           ),
-                        ),
+                          const SizedBox(height: 12),
+                          if (filtered.isEmpty)
+                            const Padding(padding: EdgeInsets.all(24), child: Center(child: Text('No matching goals', style: TextStyle(color: AppColors.textSecondary)))),
+                          ...filtered.map(
+                            (goal) => Padding(
+                              padding: const EdgeInsets.only(bottom: 12),
+                              child: _GoalCard(
+                                goal: goal,
+                                onTap: () => _showEditGoalSheet(goal),
+                                onComplete: goal.isActive ? () => _confirmComplete(goal) : null,
+                                onDelete: () => _confirmDelete(goal),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          _GoalBanner(onAddGoal: _showAddGoalSheet),
+                        ],
                       ),
-                      const SizedBox(height: 12),
-                      _GoalBanner(onAddGoal: _showAddGoalSheet),
-                    ],
-                  ),
+                    );
+                  },
                 ),
       floatingActionButton: FloatingActionButton(
         onPressed: _showAddGoalSheet,
@@ -408,11 +449,18 @@ class _GoalCard extends StatelessWidget {
                                 final saving = ref.watch(goalProvider).savingId == goal.id;
                                 return saving
                                     ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.success))
-                                    : IconButton(
-                                        icon: const Icon(Icons.check_circle_outline, color: AppColors.success, size: 20),
-                                        onPressed: onComplete,
-                                        padding: EdgeInsets.zero,
-                                        constraints: const BoxConstraints(),
+                                    : Material(
+                                        color: Colors.white,
+                                        shape: const CircleBorder(),
+                                        elevation: 1,
+                                        child: InkWell(
+                                          customBorder: const CircleBorder(),
+                                          onTap: onComplete,
+                                          child: const Padding(
+                                            padding: EdgeInsets.all(6),
+                                            child: Icon(Icons.check_circle_outline, color: AppColors.success, size: 16),
+                                          ),
+                                        ),
                                       );
                               },
                             ),
@@ -422,11 +470,18 @@ class _GoalCard extends StatelessWidget {
                               final saving = ref.watch(goalProvider).savingId == goal.id;
                               return saving
                                   ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.error))
-                                  : IconButton(
-                                      icon: const Icon(Icons.delete_outline, color: AppColors.error, size: 20),
-                                      onPressed: onDelete,
-                                      padding: EdgeInsets.zero,
-                                      constraints: const BoxConstraints(),
+                                  : Material(
+                                      color: Colors.white,
+                                      shape: const CircleBorder(),
+                                      elevation: 1,
+                                      child: InkWell(
+                                        customBorder: const CircleBorder(),
+                                        onTap: onDelete,
+                                        child: const Padding(
+                                          padding: EdgeInsets.all(6),
+                                          child: Icon(Icons.delete_outline, color: AppColors.error, size: 16),
+                                        ),
+                                      ),
                                     );
                             },
                           ),
@@ -441,18 +496,7 @@ class _GoalCard extends StatelessWidget {
                               color: urgencyColor.withOpacity(0.12),
                               borderRadius: BorderRadius.circular(8),
                             ),
-                            child: Text(
-                              goal.isCompleted
-                                  ? 'Completed'
-                                  : goal.isOverdue
-                                      ? 'Overdue'
-                                      : '$daysLeft days left',
-                              style: TextStyle(
-                                color: urgencyColor,
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
+                            child: _GoalCountdownText(goal: goal, urgencyColor: urgencyColor),
                           ),
                           const SizedBox(width: 8),
                           Icon(Icons.calendar_today, size: 11, color: AppColors.textLight),
@@ -476,12 +520,73 @@ class _GoalCard extends StatelessWidget {
   }
 }
 
+class _GoalCountdownText extends StatefulWidget {
+  final GoalModel goal;
+  final Color urgencyColor;
+  const _GoalCountdownText({required this.goal, required this.urgencyColor});
+
+  @override
+  State<_GoalCountdownText> createState() => _GoalCountdownTextState();
+}
+
+class _GoalCountdownTextState extends State<_GoalCountdownText> {
+  Timer? _timer;
+  late Duration _remaining;
+
+  @override
+  void initState() {
+    super.initState();
+    final target = DateTime.tryParse(widget.goal.targetDate);
+    _remaining = target?.difference(DateTime.now()) ?? Duration.zero;
+    if (!widget.goal.isCompleted) {
+      _timer = Timer.periodic(const Duration(seconds: 30), (_) => _updateRemaining());
+    }
+  }
+
+  void _updateRemaining() {
+    if (widget.goal.isCompleted) return;
+    final target = DateTime.tryParse(widget.goal.targetDate);
+    if (target == null) return;
+    final now = DateTime.now();
+    final diff = target.difference(now);
+    if (mounted) setState(() => _remaining = diff);
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  String _format(Duration d) {
+    if (d.isNegative) return 'Overdue';
+    final days = d.inDays;
+    final hours = d.inHours % 24;
+    final mins = d.inMinutes % 60;
+    if (days > 0) return '${days}d ${hours}h ${mins}m left';
+    if (hours > 0) return '${hours}h ${mins}m left';
+    return '${mins}m left';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.goal.isCompleted) {
+      return Text('Completed', style: TextStyle(color: widget.urgencyColor, fontSize: 11, fontWeight: FontWeight.w600));
+    }
+    if (_remaining.isNegative) {
+      final overdueDays = _remaining.inDays.abs();
+      return Text(overdueDays > 0 ? 'Overdue ${overdueDays}d' : 'Overdue', style: TextStyle(color: widget.urgencyColor, fontSize: 11, fontWeight: FontWeight.w600));
+    }
+    return Text(_format(_remaining), style: TextStyle(color: widget.urgencyColor, fontSize: 11, fontWeight: FontWeight.w600));
+  }
+}
+
 class _GoalFormSheet extends ConsumerStatefulWidget {
   final String? initialTitle;
   final String? initialDescription;
   final String? initialTargetDate;
   final String? initialCategory;
-  final void Function(String title, String? description, String targetDate, String category) onSave;
+  final Future<void> Function(String title, String? description, String targetDate, String category) onSave;
 
   const _GoalFormSheet({
     super.key,
@@ -649,22 +754,18 @@ class _GoalFormSheetState extends ConsumerState<_GoalFormSheet> {
                 child: ElevatedButton(
                   onPressed: isSaving
                       ? null
-                      : () {
+                      : () async {
                           if (_titleController.text.trim().isEmpty || _targetDate == null) return;
-                          widget.onSave(
+                          await widget.onSave(
                             _titleController.text.trim(),
                             _descriptionController.text.trim().isEmpty ? null : _descriptionController.text.trim(),
                             _targetDate!.toIso8601String().split('T')[0],
                             _category,
                           );
-                          // Don't pop immediately — wait for provider to finish, close via listener
-                          // For now pop after short delay; provider will reload list
-                          Future.delayed(const Duration(milliseconds: 300), () {
-                            if (context.mounted && ref.read(goalProvider).savingId == null) Navigator.pop(context);
-                          });
-                          // Optimistic close if not saving tracked: close next frame
-                          if (!isSaving) {
-                            // will be handled by delayed check
+                          if (!context.mounted) return;
+                          final err = ref.read(goalProvider).error;
+                          if (err != null) {
+                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(err), backgroundColor: AppColors.error));
                           }
                         },
                   style: ElevatedButton.styleFrom(
