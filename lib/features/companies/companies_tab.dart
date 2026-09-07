@@ -58,49 +58,34 @@ class _CompaniesTabState extends ConsumerState<CompaniesTab> {
 
     final filtered = _filtered(state.companies);
 
-    return Stack(
-      children: [
-        const GlassMeshBackground(),
-        RefreshIndicator(
-          color: _indigo,
-          onRefresh: () => ref.read(companiesProvider.notifier).loadCompanies(),
-          child: ListView(
-            padding: const EdgeInsets.only(bottom: 16),
-            children: [
-              // Glass search
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(30),
-                  child: BackdropFilter(
-                    filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-                    child: TextField(
-                      controller: _searchController,
-                      onChanged: (v) => setState(() => _query = v),
-                      style: const TextStyle(fontSize: 14, color: Color(0xFF0F172A), fontWeight: FontWeight.w500),
-                      decoration: InputDecoration(
-                        hintText: 'Search companies, roles...',
-                        hintStyle: TextStyle(color: Colors.black.withValues(alpha: 0.35), fontSize: 13, fontWeight: FontWeight.w500),
-                        prefixIcon: Container(
-                          margin: const EdgeInsets.all(6),
-                          padding: const EdgeInsets.all(7),
-                          decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.65), shape: BoxShape.circle, border: Border.all(color: Colors.white.withValues(alpha: 0.45))),
-                          child: const Icon(Icons.search_rounded, color: _indigo, size: 16),
-                        ),
-                        suffixIcon: _query.isNotEmpty
-                            ? IconButton(icon: const Icon(Icons.clear_rounded, size: 18, color: Colors.black45), onPressed: () { _searchController.clear(); setState(() => _query = ''); })
-                            : null,
-                        filled: true,
-                        fillColor: Colors.white.withValues(alpha: 0.62),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(30), borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.40))),
-                        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(30), borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.40))),
-                        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(30), borderSide: const BorderSide(color: _indigo, width: 1.2)),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
-                      ),
-                    ),
-                  ),
-                ),
+    return RefreshIndicator(
+      color: _indigo,
+      onRefresh: () => ref.read(companiesProvider.notifier).loadCompanies(),
+      child: ListView(
+        padding: const EdgeInsets.only(bottom: 16),
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+            child: TextField(
+              controller: _searchController,
+              onChanged: (v) => setState(() => _query = v),
+              style: const TextStyle(fontSize: 14, color: Color(0xFF0F172A), fontWeight: FontWeight.w500),
+              decoration: InputDecoration(
+                hintText: 'Search companies, roles...',
+                hintStyle: TextStyle(color: Colors.black.withValues(alpha: 0.35), fontSize: 13, fontWeight: FontWeight.w500),
+                prefixIcon: const Icon(Icons.search_rounded, color: _indigo, size: 16),
+                suffixIcon: _query.isNotEmpty
+                    ? IconButton(icon: const Icon(Icons.clear_rounded, size: 18, color: Colors.black45), onPressed: () { _searchController.clear(); setState(() => _query = ''); })
+                    : null,
+                filled: true,
+                fillColor: Colors.white,
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.black.withValues(alpha: 0.1))),
+                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.black.withValues(alpha: 0.1))),
+                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: _indigo, width: 1.2)),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
               ),
+            ),
+          ),
               if (filtered.isEmpty)
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 40),
@@ -118,9 +103,7 @@ class _CompaniesTabState extends ConsumerState<CompaniesTab> {
               const _CompanyBanner(),
             ],
           ),
-        ),
-      ],
-    );
+        );
   }
 }
 
