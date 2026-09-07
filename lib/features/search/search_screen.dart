@@ -344,7 +344,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                           final docColor = _docColor(doc.type);
                           return Padding(
                             padding: const EdgeInsets.only(bottom: 10),
-                            child: GestureDetector(
+                              child: GestureDetector(
                               onTap: () => context.push('/documents/preview/${doc.id}'),
                               child: Container(
                                 decoration: BoxDecoration(

@@ -4,6 +4,8 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../core/constants/app_colors.dart';
 import '../companies/companies_provider.dart';
 import '../documents/lookup_provider.dart';
@@ -85,44 +87,58 @@ class _ReminderTab extends ConsumerWidget {
     final state = ref.watch(reminderProvider);
     final filtered = state.reminders.where((r) => r.category == category).toList();
     if (state.isLoading) return const Center(child: CircularProgressIndicator());
+    if (state.error != null) {
+      return Center(child: Column(mainAxisSize: MainAxisSize.min, children: [Text('Error: ${state.error}', style: const TextStyle(color: AppColors.error)), const SizedBox(height: 8), ElevatedButton(onPressed: () => ref.read(reminderProvider.notifier).load(), child: const Text('Retry'))]));
+    }
     if (filtered.isEmpty) {
-      return ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          const SizedBox(height: 30),
-          Center(
-            child: Column(children: [
-              Container(padding: const EdgeInsets.all(20), decoration: BoxDecoration(color: AppColors.primary.withValues(alpha: 0.05), shape: BoxShape.circle), child: Icon(category == 'professional' ? Icons.work : Icons.person, size: 48, color: AppColors.textLight)),
-              const SizedBox(height: 16),
-              Text(category == 'professional' ? 'No professional reminders' : 'No personal reminders', style: const TextStyle(color: AppColors.textSecondary, fontSize: 16)),
-              const SizedBox(height: 8),
-              Text(category == 'professional' ? 'Probation, appraisal, notice period...' : 'Birthday, insurance, EMI, SIP, rent...', style: const TextStyle(color: AppColors.textLight, fontSize: 12), textAlign: TextAlign.center),
-              const SizedBox(height: 16),
-                    ElevatedButton.icon(onPressed: () => onAdd(category: category), icon: const Icon(Icons.add), label: const Text('Add Reminder'), style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white)),
-            ]),
-          ),
-          const SizedBox(height: 24),
-          _ReminderBanner(onAdd: () => onAdd(category: category)),
-        ],
+      return RefreshIndicator(
+        onRefresh: () => ref.read(reminderProvider.notifier).load(),
+        child: ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            const SizedBox(height: 20),
+            Center(child: Text('Total: ${state.reminders.length} | $category: ${filtered.length} (debug)', style: const TextStyle(color: AppColors.textLight, fontSize: 10))),
+            const SizedBox(height: 10),
+            Center(
+              child: Column(children: [
+                Container(padding: const EdgeInsets.all(20), decoration: BoxDecoration(color: AppColors.primary.withValues(alpha: 0.05), shape: BoxShape.circle), child: Icon(category == 'professional' ? Icons.work : Icons.person, size: 48, color: AppColors.textLight)),
+                const SizedBox(height: 16),
+                Text(category == 'professional' ? 'No professional reminders' : 'No personal reminders', style: const TextStyle(color: AppColors.textSecondary, fontSize: 16)),
+                const SizedBox(height: 8),
+                Text(category == 'professional' ? 'Probation, appraisal, notice period...' : 'Birthday, insurance, EMI, SIP, rent...', style: const TextStyle(color: AppColors.textLight, fontSize: 12), textAlign: TextAlign.center),
+                const SizedBox(height: 16),
+                ElevatedButton.icon(onPressed: () => onAdd(category: category), icon: const Icon(Icons.add), label: const Text('Add Reminder'), style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white)),
+                const SizedBox(height: 8),
+                OutlinedButton.icon(onPressed: () => ref.read(reminderProvider.notifier).load(), icon: const Icon(Icons.refresh, size: 16), label: const Text('Refresh')),
+              ]),
+            ),
+            const SizedBox(height: 24),
+            _ReminderBanner(onAdd: () => onAdd(category: category)),
+          ],
+        ),
       );
     }
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-      children: [
-        ...filtered.map((r) => Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: _ReminderCard(
-                reminder: r,
-                onEdit: () => onAdd(reminder: r),
-                onDelete: () async {
-                  final ok = await showDialog<bool>(context: context, builder: (ctx) => AlertDialog(title: const Text('Delete?'), content: Text('Delete "${r.title}"?'), actions: [TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')), ElevatedButton(onPressed: () => Navigator.pop(ctx, true), style: ElevatedButton.styleFrom(backgroundColor: AppColors.error, foregroundColor: Colors.white), child: const Text('Delete'))]));
-                  if (ok == true) ref.read(reminderProvider.notifier).deleteReminder(r.id);
-                },
-              ),
-            )),
-        const SizedBox(height: 12),
-        _ReminderBanner(onAdd: () => onAdd()),
-      ],
+    return RefreshIndicator(
+      onRefresh: () => ref.read(reminderProvider.notifier).load(),
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+        children: [
+          Padding(padding: const EdgeInsets.only(bottom: 8), child: Text('Total: ${state.reminders.length} | $category: ${filtered.length}', style: const TextStyle(color: AppColors.textLight, fontSize: 10), textAlign: TextAlign.center)),
+          ...filtered.map((r) => Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: _ReminderCard(
+                  reminder: r,
+                  onEdit: () => onAdd(reminder: r),
+                  onDelete: () async {
+                    final ok = await showDialog<bool>(context: context, builder: (ctx) => AlertDialog(title: const Text('Delete?'), content: Text('Delete "${r.title}"?'), actions: [TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')), ElevatedButton(onPressed: () => Navigator.pop(ctx, true), style: ElevatedButton.styleFrom(backgroundColor: AppColors.error, foregroundColor: Colors.white), child: const Text('Delete'))]));
+                    if (ok == true) ref.read(reminderProvider.notifier).deleteReminder(r.id);
+                  },
+                ),
+              )),
+          const SizedBox(height: 12),
+          _ReminderBanner(onAdd: () => onAdd(category: category)),
+        ],
+      ),
     );
   }
 }
@@ -209,7 +225,10 @@ class _ReminderCardState extends State<_ReminderCard> {
             if (r.description != null && r.description!.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 2), child: Text(r.description!, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: AppColors.textSecondary, fontSize: 12))),
             if (r.jd != null && r.jd!.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 2), child: Text('JD: ${r.jd}', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: AppColors.textSecondary.withValues(alpha: 0.8), fontSize: 11))),
             if (r.companyName != null && r.companyName!.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 2), child: Row(children: [const Icon(Icons.business, size: 11, color: AppColors.textLight), const SizedBox(width: 3), Text(r.companyName!, style: const TextStyle(color: AppColors.textLight, fontSize: 11))])),
-            if (r.fileName != null && r.fileName!.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 2), child: Row(children: [const Icon(Icons.attach_file, size: 11, color: AppColors.primary), const SizedBox(width: 3), Expanded(child: Text(r.fileName!, style: const TextStyle(color: AppColors.primary, fontSize: 11), maxLines: 1, overflow: TextOverflow.ellipsis))])),
+            if (r.fileName != null && r.fileName!.isNotEmpty) InkWell(
+              onTap: () => _showReminderFileOptions(context, r),
+              child: Padding(padding: const EdgeInsets.only(top: 2), child: Row(children: [const Icon(Icons.attach_file, size: 11, color: AppColors.primary), const SizedBox(width: 3), Expanded(child: Text(r.fileName!, style: const TextStyle(color: AppColors.primary, fontSize: 11), maxLines: 1, overflow: TextOverflow.ellipsis)), const Icon(Icons.open_in_new, size: 12, color: AppColors.textLight)])),
+            ),
             const SizedBox(height: 4),
             Row(children: [
               Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2), decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(8)), child: Text(_countdown(), style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w600))),
@@ -223,12 +242,71 @@ class _ReminderCardState extends State<_ReminderCard> {
           ]))),
           const SizedBox(width: 4),
           Column(children: [
-            IconButton(icon: const Icon(Icons.edit_outlined, size: 18, color: AppColors.primary), onPressed: widget.onEdit, padding: EdgeInsets.zero, constraints: const BoxConstraints()),
-            IconButton(icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.error), onPressed: widget.onDelete, padding: EdgeInsets.zero, constraints: const BoxConstraints()),
+            Material(
+              color: Colors.white,
+              shape: const CircleBorder(),
+              elevation: 1,
+              child: InkWell(
+                customBorder: const CircleBorder(),
+                onTap: widget.onEdit,
+                child: const Padding(padding: EdgeInsets.all(6), child: Icon(Icons.edit_outlined, size: 16, color: AppColors.primary)),
+              ),
+            ),
+            const SizedBox(height: 6),
+            Material(
+              color: Colors.white,
+              shape: const CircleBorder(),
+              elevation: 1,
+              child: InkWell(
+                customBorder: const CircleBorder(),
+                onTap: widget.onDelete,
+                child: const Padding(padding: EdgeInsets.all(6), child: Icon(Icons.delete_outline, size: 16, color: AppColors.error)),
+              ),
+            ),
           ]),
           const SizedBox(width: 4),
         ]),
       ),
+    );
+  }
+}
+
+void _showReminderFileOptions(BuildContext context, ReminderModel r) {
+  if (r.fileUrl == null || r.fileUrl!.isEmpty) return;
+  showModalBottomSheet(
+    context: context,
+    shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+    builder: (ctx) => Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+      child: Column(mainAxisSize: MainAxisSize.min, children: [
+        Container(width: 40, height: 4, decoration: BoxDecoration(color: AppColors.textLight.withValues(alpha: 0.3), borderRadius: BorderRadius.circular(2))),
+        const SizedBox(height: 16),
+        Row(children: [Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: AppColors.primary.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)), child: const Icon(Icons.attach_file, color: AppColors.primary, size: 20)), const SizedBox(width: 12), Expanded(child: Text(r.fileName ?? 'Attachment', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14), maxLines: 2, overflow: TextOverflow.ellipsis))]),
+        const SizedBox(height: 20),
+        Row(children: [
+          Expanded(child: _FileOptionButton(icon: Icons.visibility_outlined, label: 'Open', color: AppColors.primary, onTap: () { Navigator.pop(ctx); if (r.fileUrl != null) launchUrl(Uri.parse(r.fileUrl!), mode: LaunchMode.platformDefault); })),
+          const SizedBox(width: 12),
+          Expanded(child: _FileOptionButton(icon: Icons.download_outlined, label: 'Download', color: AppColors.success, onTap: () { Navigator.pop(ctx); if (r.fileUrl != null) launchUrl(Uri.parse(r.fileUrl!), mode: LaunchMode.platformDefault); })),
+          const SizedBox(width: 12),
+          Expanded(child: _FileOptionButton(icon: Icons.share_outlined, label: 'Share', color: AppColors.secondary, onTap: () { Navigator.pop(ctx); if (r.fileUrl != null) SharePlus.instance.share(ShareParams(text: '${r.title}\n${r.fileUrl}')); })),
+        ]),
+      ]),
+    ),
+  );
+}
+
+class _FileOptionButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+  final VoidCallback onTap;
+  const _FileOptionButton({required this.icon, required this.label, required this.color, required this.onTap});
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(padding: const EdgeInsets.symmetric(vertical: 14), decoration: BoxDecoration(color: color.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(12), border: Border.all(color: color.withValues(alpha: 0.15))), child: Column(children: [Icon(icon, color: color, size: 22), const SizedBox(height: 4), Text(label, style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w600))])),
     );
   }
 }

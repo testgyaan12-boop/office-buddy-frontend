@@ -38,15 +38,14 @@ class ReminderNotifier extends StateNotifier<ReminderState> {
   }
 
   Future<void> load({String? category}) async {
-    state = state.copyWith(isLoading: true);
+    state = state.copyWith(isLoading: true, error: null);
     try {
       final res = await _apiClient.get(ApiEndpoints.reminders, queryParameters: category != null ? {'category': category} : null);
       final list = (res.data as List).map((e) => ReminderModel.fromJson(e as Map<String, dynamic>)).toList();
       list.sort((a, b) => a.remindAt.compareTo(b.remindAt));
-      state = ReminderState(reminders: list);
+      state = state.copyWith(reminders: list, isLoading: false);
     } catch (e) {
-      // Fallback to empty on error (e.g., offline)
-      state = ReminderState(error: e.toString(), reminders: state.reminders);
+      state = state.copyWith(isLoading: false, error: e.toString());
     }
   }
 
@@ -68,6 +67,7 @@ class ReminderNotifier extends StateNotifier<ReminderState> {
   }
 
   Future<void> addReminder(ReminderModel reminder, {Uint8List? fileBytes, String? fileName}) async {
+    state = state.copyWith(isLoading: true, error: null);
     try {
       final deviceId = await _getDeviceId();
       dynamic resData;
@@ -104,15 +104,17 @@ class ReminderNotifier extends StateNotifier<ReminderState> {
         resData = res.data;
       }
       final created = ReminderModel.fromJson(resData as Map<String, dynamic>);
-      await _schedule(created);
+      // Fire-and-forget schedule/history so list refresh not blocked
+      _schedule(created).catchError((_) {});
       await load();
     } catch (e) {
-      state = state.copyWith(error: e.toString());
+      state = state.copyWith(isLoading: false, error: e.toString());
     }
   }
 
   Future<void> updateReminder(String id, ReminderModel updated, {Uint8List? fileBytes, String? fileName}) async {
     try {
+      state = state.copyWith(isLoading: true, error: null);
       await _notifications.cancel(id.hashCode & 0x7fffffff);
       ReminderModel toUpdate = updated;
       if (fileBytes != null && fileName != null) {
@@ -134,7 +136,7 @@ class ReminderNotifier extends StateNotifier<ReminderState> {
         'notifyBeforeMinutes': toUpdate.notifyBefore.inMinutes,
       });
       final rem = ReminderModel.fromJson(res.data as Map<String, dynamic>);
-      await _schedule(rem);
+      _schedule(rem).catchError((_) {});
       await load();
     } catch (e) {
       state = state.copyWith(error: e.toString());
