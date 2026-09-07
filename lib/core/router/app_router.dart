@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../features/community/chat_screen.dart';
-import '../../features/ai/ai_assistant_tab.dart';
+import '../../features/reminders/reminders_screen.dart';
 import '../../features/splash/splash_screen.dart';
 import '../../features/onboarding/onboarding_screen.dart';
 import '../../features/auth/auth_screen.dart';
@@ -137,14 +137,8 @@ class AppRouter {
             ),
           ),
           GoRoute(
-            path: 'ai',
-            builder: (_, __) => Scaffold(
-              appBar: AppBar(
-                title: const Text('AI Assistant'),
-                centerTitle: false,
-              ),
-              body: const AIAssistantTab(),
-            ),
+            path: 'reminders',
+            builder: (_, __) => const RemindersScreen(),
           ),
         ],
       ),

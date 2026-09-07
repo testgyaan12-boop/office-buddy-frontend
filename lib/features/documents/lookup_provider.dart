@@ -30,9 +30,26 @@ class LookupNotifier extends StateNotifier<LookupState> {
       final res = await _apiClient.get(ApiEndpoints.lookups, queryParameters: {'code': 'DOC_TYPE'});
       final list = (res.data as List).map((e) => LookupModel.fromJson(e as Map<String, dynamic>)).toList();
       list.sort((a, b) => a.sortedOrder.compareTo(b.sortedOrder));
-      state = LookupState(lookups: list.where((l) => l.isActive && !l.isDeleted).toList());
+      state = LookupState(lookups: [...state.lookups.where((l) => l.lookupCode != 'DOC_TYPE' && !l.lookupCode.startsWith('OFFER') && !l.lookupCode.startsWith('JOINING') && !l.lookupCode.startsWith('INCREMENT') && !l.lookupCode.startsWith('PAYSLIP') && !l.lookupCode.startsWith('CERTIFICATE') && !l.lookupCode.startsWith('RELIEVING') && !l.lookupCode.startsWith('TDS') && !l.lookupCode.startsWith('CONFIRMATION')), ...list.where((l) => l.isActive && !l.isDeleted)]);
+      state = state.copyWith(isLoading: false);
     } catch (e) {
       state = state.copyWith(isLoading: false, error: 'Failed to load types');
+    }
+  }
+
+  Future<void> loadByCode(String code) async {
+    try {
+      final res = await _apiClient.get(ApiEndpoints.lookups, queryParameters: {'code': code});
+      final list = (res.data as List).map((e) => LookupModel.fromJson(e as Map<String, dynamic>)).toList();
+      list.sort((a, b) => a.sortedOrder.compareTo(b.sortedOrder));
+      final filtered = list.where((l) => l.isActive && !l.isDeleted).toList();
+      // Merge, dedupe by lookupCode
+      final existing = {for (var l in state.lookups) l.lookupCode: l};
+      for (var l in filtered) existing[l.lookupCode] = l;
+      // Also keep parent itself if not in list (some APIs return only children)
+      state = state.copyWith(lookups: existing.values.toList(), isLoading: false);
+    } catch (e) {
+      state = state.copyWith(error: 'Failed to load $code');
     }
   }
 }

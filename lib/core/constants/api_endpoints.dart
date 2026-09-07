@@ -64,4 +64,6 @@ class ApiEndpoints {
   static const String communityFriends = '/community/friends';
   static const String communityUsers = '/community/users';
   static const String communityUserCompanies = '/community/users/';
+  static const String reminders = '/reminders';
+  static const String reminderHistory = '/reminders/history';
 }

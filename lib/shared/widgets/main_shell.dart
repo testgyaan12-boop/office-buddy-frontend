@@ -238,11 +238,12 @@ class _MainShellState extends ConsumerState<MainShell> {
               onPressed: () => context.push('/todos'),
             ),
             IconButton(
-              icon: const Icon(Icons.smart_toy, color: AppColors.primary),
-              onPressed: () {
-                ref.read(shellTabProvider.notifier).state = 0;
-                context.push('/ai');
-              },
+              icon: const Badge(
+                label: Text(''),
+                smallSize: 8,
+                child: Icon(Icons.alarm_rounded, color: AppColors.primary),
+              ),
+              onPressed: () => context.push('/reminders'),
             ),
             if (authState.user?.avatarUrl != null &&
                 authState.user!.avatarUrl!.isNotEmpty)
