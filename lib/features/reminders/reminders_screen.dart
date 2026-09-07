@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:typed_data';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -284,13 +285,73 @@ void _showReminderFileOptions(BuildContext context, ReminderModel r) {
         Row(children: [Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: AppColors.primary.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)), child: const Icon(Icons.attach_file, color: AppColors.primary, size: 20)), const SizedBox(width: 12), Expanded(child: Text(r.fileName ?? 'Attachment', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14), maxLines: 2, overflow: TextOverflow.ellipsis))]),
         const SizedBox(height: 20),
         Row(children: [
-          Expanded(child: _FileOptionButton(icon: Icons.visibility_outlined, label: 'Open', color: AppColors.primary, onTap: () { Navigator.pop(ctx); if (r.fileUrl != null) launchUrl(Uri.parse(r.fileUrl!), mode: LaunchMode.platformDefault); })),
+          Expanded(child: _FileOptionButton(icon: Icons.visibility_outlined, label: 'Open', color: AppColors.primary, onTap: () { Navigator.pop(ctx); _showFilePreview(context, r); })),
           const SizedBox(width: 12),
-          Expanded(child: _FileOptionButton(icon: Icons.download_outlined, label: 'Download', color: AppColors.success, onTap: () { Navigator.pop(ctx); if (r.fileUrl != null) launchUrl(Uri.parse(r.fileUrl!), mode: LaunchMode.platformDefault); })),
+          Expanded(child: _FileOptionButton(icon: Icons.download_outlined, label: 'Download', color: AppColors.success, onTap: () { Navigator.pop(ctx); if (r.fileUrl != null) launchUrl(Uri.parse(r.fileUrl!), mode: LaunchMode.externalApplication); })),
           const SizedBox(width: 12),
           Expanded(child: _FileOptionButton(icon: Icons.share_outlined, label: 'Share', color: AppColors.secondary, onTap: () { Navigator.pop(ctx); if (r.fileUrl != null) SharePlus.instance.share(ShareParams(text: '${r.title}\n${r.fileUrl}')); })),
         ]),
       ]),
+    ),
+  );
+}
+
+void _showFilePreview(BuildContext context, ReminderModel r) {
+  final url = r.fileUrl ?? '';
+  final isImage = url.toLowerCase().contains('.png') || url.toLowerCase().contains('.jpg') || url.toLowerCase().contains('.jpeg') || (r.fileName != null && (r.fileName!.toLowerCase().endsWith('.png') || r.fileName!.toLowerCase().endsWith('.jpg') || r.fileName!.toLowerCase().endsWith('.jpeg')));
+  final isPdf = url.toLowerCase().contains('.pdf') || (r.fileName != null && r.fileName!.toLowerCase().endsWith('.pdf'));
+  showDialog(
+    context: context,
+    builder: (ctx) => Dialog(
+      insetPadding: const EdgeInsets.all(16),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.75, maxWidth: MediaQuery.of(context).size.width * 0.9),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(color: AppColors.primary.withValues(alpha: 0.08), border: Border(bottom: BorderSide(color: AppColors.textLight.withValues(alpha: 0.15)))),
+              child: Row(children: [Expanded(child: Text(r.fileName ?? r.title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14), maxLines: 1, overflow: TextOverflow.ellipsis)), IconButton(icon: const Icon(Icons.close, size: 20), onPressed: () => Navigator.pop(ctx))]),
+            ),
+            Flexible(
+              child: isImage
+                  ? InteractiveViewer(
+                      child: CachedNetworkImage(
+                        imageUrl: url,
+                        fit: BoxFit.contain,
+                        placeholder: (_, __) => const Padding(padding: EdgeInsets.all(32), child: Center(child: CircularProgressIndicator())),
+                        errorWidget: (_, __, ___) => Padding(padding: const EdgeInsets.all(24), child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [const Icon(Icons.broken_image, size: 48, color: AppColors.textLight), const SizedBox(height: 8), Text('Failed to load image', style: TextStyle(color: AppColors.textSecondary)), const SizedBox(height: 12), ElevatedButton.icon(onPressed: () => launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication), icon: const Icon(Icons.open_in_new, size: 16), label: const Text('Open externally'))])),
+                      ),
+                    )
+                  : isPdf
+                      ? Padding(
+                          padding: const EdgeInsets.all(24),
+                          child: Column(mainAxisSize: MainAxisSize.min, children: [
+                            const Icon(Icons.picture_as_pdf, size: 64, color: AppColors.error),
+                            const SizedBox(height: 12),
+                            Text(r.fileName ?? 'Document.pdf', style: const TextStyle(fontWeight: FontWeight.w600)),
+                            const SizedBox(height: 8),
+                            const Text('PDF preview not available in dialog.\nOpen externally to view.', textAlign: TextAlign.center, style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+                            const SizedBox(height: 16),
+                            ElevatedButton.icon(onPressed: () => launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication), icon: const Icon(Icons.open_in_new, size: 16), label: const Text('Open PDF')),
+                          ]),
+                        )
+                      : Padding(
+                          padding: const EdgeInsets.all(24),
+                          child: Column(mainAxisSize: MainAxisSize.min, children: [
+                            const Icon(Icons.description, size: 64, color: AppColors.textLight),
+                            const SizedBox(height: 12),
+                            Text(r.fileName ?? r.title, style: const TextStyle(fontWeight: FontWeight.w600)),
+                            const SizedBox(height: 16),
+                            ElevatedButton.icon(onPressed: () => launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication), icon: const Icon(Icons.open_in_new, size: 16), label: const Text('Open file')),
+                          ]),
+                        ),
+            ),
+          ]),
+        ),
+      ),
     ),
   );
 }
