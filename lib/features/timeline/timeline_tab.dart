@@ -62,6 +62,7 @@ class TimelineTab extends ConsumerWidget {
                 final date = entry.value.first.eventDate;
                 final isLastCompany = idx == entries.length - 1;
                 final isLastOverall = year == years.last && isLastCompany;
+                // Attractive card: left gradient strip + glass + icon
                 return [
                   IntrinsicHeight(
                     child: Row(
