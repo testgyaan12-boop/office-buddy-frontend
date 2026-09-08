@@ -7,6 +7,8 @@ class TimelineEvent {
   final String title;
   final String description;
   final String type;
+  final String? companyId;
+  final String? documentId;
   final String? companyName;
   final DateTime eventDate;
   final DateTime? documentDate;
@@ -17,6 +19,8 @@ class TimelineEvent {
     required this.title,
     required this.description,
     required this.type,
+    this.companyId,
+    this.documentId,
     this.companyName,
     required this.eventDate,
     this.documentDate,
@@ -40,6 +44,8 @@ class TimelineEvent {
       title: json['title'] as String,
       description: json['description'] as String? ?? '',
       type: json['eventType'] as String? ?? json['type'] as String? ?? '',
+      companyId: json['companyId'] as String?,
+      documentId: json['documentId'] as String?,
       companyName: json['companyName'] as String?,
       eventDate: eventDate,
       documentDate: docDate,

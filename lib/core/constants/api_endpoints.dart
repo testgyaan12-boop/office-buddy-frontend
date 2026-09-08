@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform, kReleaseMode;
+import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform, kIsWeb, kReleaseMode;
 
 class ApiEndpoints {
   ApiEndpoints._();
@@ -11,6 +11,10 @@ class ApiEndpoints {
     // Release APK/AAB (and web release) → Render backend
     if (kReleaseMode) {
       return 'https://office-buddy-backend.onrender.com/api/v1';
+    }
+    // Web → localhost:8080 (Chrome debug)
+    if (kIsWeb) {
+      return 'http://localhost:8080/api/v1';
     }
     // Debug / Profile → local dev
     if (defaultTargetPlatform == TargetPlatform.android) {
