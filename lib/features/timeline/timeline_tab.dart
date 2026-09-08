@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/utils/date_formatter.dart';
-import '../../shared/widgets/date_badge.dart';
 import '../../shared/widgets/error_state.dart';
 import '../../shared/widgets/loading_shimmer.dart';
 import 'models/timeline_event.dart';
@@ -30,7 +29,6 @@ class TimelineTab extends ConsumerWidget {
       );
     }
 
-    // Year header + original detailed cards (company + doc count + date)
     final grouped = <int, List<TimelineEvent>>{};
     for (final e in sortedEvents) {
       final y = e.eventDate.year;
@@ -46,9 +44,7 @@ class TimelineTab extends ConsumerWidget {
           if (years.isEmpty)
             const Padding(
               padding: EdgeInsets.symmetric(vertical: 40),
-              child: Center(
-                  child: Text('No timeline yet',
-                      style: TextStyle(color: AppColors.textSecondary))),
+              child: Center(child: Text('No timeline yet', style: TextStyle(color: AppColors.textSecondary))),
             )
           else
             ...years.expand((year) {
@@ -66,7 +62,6 @@ class TimelineTab extends ConsumerWidget {
                 final date = entry.value.first.eventDate;
                 final isLastCompany = idx == entries.length - 1;
                 final isLastOverall = year == years.last && isLastCompany;
-                // Attractive card: left gradient strip + glass + icon
                 return [
                   IntrinsicHeight(
                     child: Row(
@@ -82,37 +77,24 @@ class TimelineTab extends ConsumerWidget {
                                 decoration: BoxDecoration(
                                   gradient: AppColors.primaryGradient,
                                   shape: BoxShape.circle,
-                                  boxShadow: [
-                                    BoxShadow(
-                                        color: AppColors.primary
-                                            .withValues(alpha: 0.30),
-                                        blurRadius: 10,
-                                        offset: const Offset(0, 3))
-                                  ],
-                                  border:
-                                      Border.all(color: Colors.white, width: 2),
+                                  boxShadow: [BoxShadow(color: AppColors.primary.withValues(alpha: 0.30), blurRadius: 10, offset: const Offset(0, 3))],
+                                  border: Border.all(color: Colors.white, width: 2),
                                 ),
-                                child: Center(
-                                    child: Text('$year',
-                                        style: const TextStyle(
-                                            color: Colors.white,
-                                            fontWeight: FontWeight.w900,
-                                            fontSize: 13))),
+                                child: Center(child: Text('$year', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 13))),
                               ),
                               if (!isLastOverall)
                                 Expanded(
-                                    child: Container(
-                                        width: 2.5,
-                                        decoration: BoxDecoration(
-                                            gradient: LinearGradient(
-                                                colors: [
-                                              AppColors.primary
-                                                  .withValues(alpha: 0.25),
-                                              AppColors.primary
-                                                  .withValues(alpha: 0.05)
-                                            ],
-                                                begin: Alignment.topCenter,
-                                                end: Alignment.bottomCenter)))),
+                                  child: Container(
+                                    width: 2.5,
+                                    decoration: BoxDecoration(
+                                      gradient: LinearGradient(
+                                        colors: [AppColors.primary.withValues(alpha: 0.25), AppColors.primary.withValues(alpha: 0.05)],
+                                        begin: Alignment.topCenter,
+                                        end: Alignment.bottomCenter,
+                                      ),
+                                    ),
+                                  ),
+                                ),
                               if (!isLastOverall) const SizedBox(height: 6),
                             ],
                           ),
@@ -123,143 +105,62 @@ class TimelineTab extends ConsumerWidget {
                             onTap: () => context.push('/search'),
                             borderRadius: BorderRadius.circular(16),
                             child: Container(
-                            margin: const EdgeInsets.only(bottom: 14),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(16),
-                              boxShadow: [
-                                BoxShadow(
-                                    color: AppColors.cardShadow,
-                                    blurRadius: 10,
-                                    offset: const Offset(0, 4)),
-                                BoxShadow(
-                                    color: AppColors.primary
-                                        .withValues(alpha: 0.06),
-                                    blurRadius: 16,
-                                    offset: const Offset(0, 6))
-                              ],
-                              border: Border.all(
-                                  color: AppColors.primary
-                                      .withValues(alpha: 0.08)),
-                            ),
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(16),
-                              child: Row(
-                                children: [
-                                  Container(
-                                      width: 5,
-                                      height: 88,
-                                      decoration: const BoxDecoration(
-                                          gradient: AppColors.primaryGradient)),
-                                  const SizedBox(width: 12),
-                                  Container(
-                                    padding: const EdgeInsets.all(10),
-                                    decoration: BoxDecoration(
-                                        gradient: LinearGradient(
-                                            colors: [
-                                              AppColors.primary
-                                                  .withValues(alpha: 0.14),
-                                              AppColors.primary
-                                                  .withValues(alpha: 0.06)
-                                            ],
-                                            begin: Alignment.topLeft,
-                                            end: Alignment.bottomRight),
+                              margin: const EdgeInsets.only(bottom: 14),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(16),
+                                boxShadow: [BoxShadow(color: AppColors.cardShadow, blurRadius: 10, offset: const Offset(0, 4)), BoxShadow(color: AppColors.primary.withValues(alpha: 0.06), blurRadius: 16, offset: const Offset(0, 6))],
+                                border: Border.all(color: AppColors.primary.withValues(alpha: 0.08)),
+                              ),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(16),
+                                child: Row(
+                                  children: [
+                                    Container(width: 5, height: 88, decoration: const BoxDecoration(gradient: AppColors.primaryGradient)),
+                                    const SizedBox(width: 12),
+                                    Container(
+                                      padding: const EdgeInsets.all(10),
+                                      decoration: BoxDecoration(
+                                        gradient: LinearGradient(colors: [AppColors.primary.withValues(alpha: 0.14), AppColors.primary.withValues(alpha: 0.06)], begin: Alignment.topLeft, end: Alignment.bottomRight),
                                         borderRadius: BorderRadius.circular(12),
-                                        border: Border.all(
-                                            color: AppColors.primary
-                                                .withValues(alpha: 0.12))),
-                                    child: const Icon(Icons.business,
-                                        color: AppColors.primary, size: 20),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Padding(
-                                      padding: const EdgeInsets.symmetric(
-                                          vertical: 12, horizontal: 4),
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(entry.key,
-                                              style: const TextStyle(
-                                                  fontWeight: FontWeight.w700,
-                                                  fontSize: 14,
-                                                  color: AppColors.textPrimary),
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis),
-                                          const SizedBox(height: 5),
-                                          Container(
-                                            padding: const EdgeInsets.symmetric(
-                                                horizontal: 8, vertical: 3),
-                                            decoration: BoxDecoration(
-                                                color: AppColors.primary
-                                                    .withValues(alpha: 0.08),
-                                                borderRadius:
-                                                    BorderRadius.circular(20)),
-                                            child: Row(
-                                                mainAxisSize: MainAxisSize.min,
-                                                children: [
-                                                  const Icon(Icons.description,
-                                                      size: 12,
-                                                      color: AppColors.primary),
-                                                  const SizedBox(width: 4),
-                                                  Text('$docs documents',
-                                                      style: const TextStyle(
-                                                          color:
-                                                              AppColors.primary,
-                                                          fontSize: 11,
-                                                          fontWeight:
-                                                              FontWeight.w600))
-                                                ]),
-                                          ),
-                                          const SizedBox(height: 5),
-                                          Row(children: [
+                                        border: Border.all(color: AppColors.primary.withValues(alpha: 0.12)),
+                                      ),
+                                      child: const Icon(Icons.business, color: AppColors.primary, size: 20),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Padding(
+                                        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(entry.key, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: AppColors.textPrimary), maxLines: 1, overflow: TextOverflow.ellipsis),
+                                            const SizedBox(height: 5),
                                             Container(
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                        horizontal: 7,
-                                                        vertical: 3),
-                                                decoration: BoxDecoration(
-                                                    color: AppColors.background,
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                            20)),
-                                                child: Row(
-                                                    mainAxisSize:
-                                                        MainAxisSize.min,
-                                                    children: [
-                                                      const Icon(Icons.event,
-                                                          size: 11,
-                                                          color: AppColors
-                                                              .textLight),
-                                                      const SizedBox(width: 4),
-                                                      Text(formatDate(date),
-                                                          style: const TextStyle(
-                                                              color: AppColors
-                                                                  .textSecondary,
-                                                              fontSize: 11,
-                                                              fontWeight:
-                                                                  FontWeight
-                                                                      .w500))
-                                                    ])),
-                                          ]),
-                                        ],
+                                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                              decoration: BoxDecoration(color: AppColors.primary.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(20)),
+                                              child: Row(mainAxisSize: MainAxisSize.min, children: [const Icon(Icons.description, size: 12, color: AppColors.primary), const SizedBox(width: 4), Text('$docs documents', style: const TextStyle(color: AppColors.primary, fontSize: 11, fontWeight: FontWeight.w600))]),
+                                            ),
+                                            const SizedBox(height: 5),
+                                            Row(children: [
+                                              Container(
+                                                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                                                decoration: BoxDecoration(color: AppColors.background, borderRadius: BorderRadius.circular(20)),
+                                                child: Row(mainAxisSize: MainAxisSize.min, children: [const Icon(Icons.event, size: 11, color: AppColors.textLight), const SizedBox(width: 4), Text(formatDate(date), style: const TextStyle(color: AppColors.textSecondary, fontSize: 11, fontWeight: FontWeight.w500))]),
+                                              ),
+                                            ]),
+                                          ],
+                                        ),
                                       ),
                                     ),
-                                  ),
-                                  Container(
-                                    margin: const EdgeInsets.only(right: 8),
-                                    padding: const EdgeInsets.all(6),
-                                    decoration: BoxDecoration(
-                                        color: AppColors.primary
-                                            .withValues(alpha: 0.08),
-                                        shape: BoxShape.circle),
-                                    child: const Icon(
-                                        Icons.arrow_forward_rounded,
-                                        color: AppColors.primary,
-                                        size: 14),
-                                  ),
-                                ],
+                                    Container(
+                                      margin: const EdgeInsets.only(right: 8),
+                                      padding: const EdgeInsets.all(6),
+                                      decoration: BoxDecoration(color: AppColors.primary.withValues(alpha: 0.08), shape: BoxShape.circle),
+                                      child: const Icon(Icons.arrow_forward_rounded, color: AppColors.primary, size: 14),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
                           ),
@@ -270,153 +171,8 @@ class TimelineTab extends ConsumerWidget {
                 ];
               });
             }),
+          const SizedBox(height: 8),
           const _TimelineBanner(),
-        ],
-      ),
-    );
-  }
-}
-
-class _TimelineTile extends StatelessWidget {
-  final TimelineEvent event;
-  final bool isLast;
-  final bool isFirst;
-
-  const _TimelineTile({
-    required this.event,
-    required this.isLast,
-    required this.isFirst,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return IntrinsicHeight(
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 40,
-            child: Column(
-              children: [
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: event.color.withOpacity(0.15),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(event.icon, color: event.color, size: 20),
-                ),
-                if (!isLast)
-                  Expanded(
-                    child: Container(
-                      width: 2,
-                      color: AppColors.textLight.withOpacity(0.3),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Container(
-              margin: const EdgeInsets.only(bottom: 16),
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: AppColors.surface,
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: const [
-                  BoxShadow(
-                    color: AppColors.cardShadow,
-                    blurRadius: 8,
-                    offset: Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: event.color.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(
-                          event.type,
-                          style: TextStyle(
-                            color: event.color,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    event.title,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 15,
-                    ),
-                  ),
-                  if (event.description.isNotEmpty) ...[
-                    const SizedBox(height: 4),
-                    Text(
-                      event.description,
-                      style: const TextStyle(
-                        color: AppColors.textSecondary,
-                        fontSize: 13,
-                      ),
-                    ),
-                  ],
-                  if (event.companyName != null) ...[
-                    const SizedBox(height: 4),
-                    Text(
-                      event.companyName!,
-                      style: const TextStyle(
-                        color: AppColors.primary,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                  const SizedBox(height: 10),
-                  Row(
-                    children: [
-                      if (event.isDocumentEvent) ...[
-                        if (event.hasDocumentDate)
-                          DateBadge(
-                            'RecievedAt ${event.formattedRecievedAt}',
-                            icon: Icons.event,
-                            color: AppColors.accent,
-                            fontSize: 8,
-                          ),
-                        if (event.hasDocumentDate) const SizedBox(width: 4),
-                        DateBadge(
-                          'UploadAt ${event.formattedUploadAt}',
-                          icon: Icons.cloud_upload,
-                          fontSize: 8,
-                        ),
-                      ] else
-                        DateBadge(
-                          formatDate(event.eventDate),
-                          color: event.color,
-                          fontSize: 8,
-                          icon: Icons.event,
-                        ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
         ],
       ),
     );
@@ -432,31 +188,19 @@ class _TimelineBanner extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [
-            AppColors.primary.withOpacity(0.08),
-            AppColors.secondary.withOpacity(0.04),
-          ],
+          colors: [AppColors.primary.withValues(alpha: 0.08), AppColors.secondary.withValues(alpha: 0.04)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.primary.withOpacity(0.12)),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.primary.withOpacity(0.06),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.12)),
+        boxShadow: [BoxShadow(color: AppColors.primary.withValues(alpha: 0.06), blurRadius: 8, offset: const Offset(0, 2))],
       ),
       child: Row(
         children: [
           Container(
             padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              gradient: AppColors.primaryGradient,
-              borderRadius: BorderRadius.circular(12),
-            ),
+            decoration: BoxDecoration(gradient: AppColors.primaryGradient, borderRadius: BorderRadius.circular(12)),
             child: const Icon(Icons.timeline, color: Colors.white, size: 26),
           ),
           const SizedBox(width: 14),
@@ -464,22 +208,9 @@ class _TimelineBanner extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Your Career Timeline',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 15,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
+                const Text('Your Career Timeline', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15, color: AppColors.textPrimary)),
                 const SizedBox(height: 4),
-                Text(
-                  'Every milestone — companies, documents, and key events in one place',
-                  style: TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 12,
-                  ),
-                ),
+                Text('Every milestone — companies, documents, and key events in one place', style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
               ],
             ),
           ),
@@ -488,4 +219,3 @@ class _TimelineBanner extends StatelessWidget {
     );
   }
 }
-
