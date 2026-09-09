@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -38,6 +39,8 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
   bool _biometricAvailable = false;
   bool _biometricEnabled = false;
   String? _pinError;
+  Timer? _resendTimer;
+  int _resendSeconds = 0;
 
   @override
   void initState() {
@@ -76,6 +79,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
     _newPasswordController.dispose();
     _confirmNewController.dispose();
     _pinLoginController.dispose();
+    _resendTimer?.cancel();
     super.dispose();
   }
 
@@ -797,6 +801,14 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
               'OTP sent to $_storedEmail',
               style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
             ),
+            if (authState.verifyEmailMessage != null && authState.verifyEmailMessage!.isNotEmpty)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(10),
+                margin: const EdgeInsets.only(top: 12),
+                decoration: BoxDecoration(color: AppColors.success.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
+                child: Text(authState.verifyEmailMessage!, style: const TextStyle(color: AppColors.success, fontSize: 13)),
+              ),
             const SizedBox(height: 24),
             TextFormField(
               controller: _otpController,
@@ -878,11 +890,15 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
             ),
             const SizedBox(height: 12),
             TextButton(
-              onPressed: () {
-                _formKey.currentState?.reset();
-                setState(() => _page = AuthPage.forgotPassword);
-              },
-              child: const Text('Resend OTP', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600, fontSize: 13)),
+              onPressed: (_resendSeconds > 0 || authState.status == AuthStatus.loading) ? null : _onResendOtp,
+              child: Text(
+                _resendSeconds > 0 ? 'Resend OTP in ${_resendSeconds ~/ 60}:${(_resendSeconds % 60).toString().padLeft(2, '0')}' : 'Resend OTP',
+                style: TextStyle(
+                  color: _resendSeconds > 0 ? AppColors.textLight : AppColors.primary,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13,
+                ),
+              ),
             ),
             TextButton(
               onPressed: () {
@@ -955,11 +971,50 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
     ref.read(authProvider.notifier).verifyEmail(token);
   }
 
-  void _onForgot() {
+  void _onForgot() async {
     if (!_formKey.currentState!.validate()) return;
     _storedEmail = _emailController.text.trim();
-    ref.read(authProvider.notifier).forgotPassword(_storedEmail);
+    await ref.read(authProvider.notifier).forgotPassword(_storedEmail);
+    if (!mounted) return;
+    final s = ref.read(authProvider);
+    if (s.status == AuthStatus.error) return;
+    if (s.verifyEmailMessage != null && s.verifyEmailMessage!.isNotEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(s.verifyEmailMessage!), backgroundColor: AppColors.success),
+      );
+    }
+    _startResendTimer();
     setState(() => _page = AuthPage.resetPassword);
+  }
+
+  void _onResendOtp() async {
+    if (_resendSeconds > 0 || _storedEmail.isEmpty) return;
+    await ref.read(authProvider.notifier).forgotPassword(_storedEmail);
+    if (!mounted) return;
+    final s = ref.read(authProvider);
+    if (s.verifyEmailMessage != null && s.verifyEmailMessage!.isNotEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(s.verifyEmailMessage!), backgroundColor: AppColors.success),
+      );
+    }
+    _startResendTimer();
+  }
+
+  void _startResendTimer() {
+    _resendTimer?.cancel();
+    setState(() => _resendSeconds = 60);
+    _resendTimer = Timer.periodic(const Duration(seconds: 1), (t) {
+      if (!mounted) {
+        t.cancel();
+        return;
+      }
+      if (_resendSeconds <= 1) {
+        t.cancel();
+        setState(() => _resendSeconds = 0);
+      } else {
+        setState(() => _resendSeconds--);
+      }
+    });
   }
 
   void _onReset() async {
