@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/api_endpoints.dart';
 import '../../../core/network/api_client.dart';
 import '../auth/auth_provider.dart';
+import '../storage/storage_quota_provider.dart';
 import 'models/document_model.dart';
 
 class DocumentsState {
@@ -35,8 +36,15 @@ class DocumentsState {
 
 class DocumentsNotifier extends StateNotifier<DocumentsState> {
   final ApiClient _apiClient;
+  final Ref _ref;
 
-  DocumentsNotifier(this._apiClient) : super(const DocumentsState());
+  DocumentsNotifier(this._apiClient, this._ref) : super(const DocumentsState());
+
+  void _refreshQuota() {
+    try {
+      _ref.read(storageQuotaProvider.notifier).load();
+    } catch (_) {}
+  }
 
   Future<void> loadDocuments({String? companyId}) async {
     state = state.copyWith(isLoading: true, error: null);
@@ -68,6 +76,7 @@ class DocumentsNotifier extends StateNotifier<DocumentsState> {
         extraData: request.toFormFields(),
       );
       await loadDocuments(companyId: request.companyId);
+      _refreshQuota();
       return true;
     } catch (e) {
       var msg = 'Failed to upload document';
@@ -92,6 +101,7 @@ class DocumentsNotifier extends StateNotifier<DocumentsState> {
         documents: state.documents.where((d) => d.id != id).toList(),
         deletingId: null,
       );
+      _refreshQuota();
     } catch (e) {
       state = state.copyWith(deletingId: null, error: 'Failed to delete document');
     }
@@ -101,5 +111,5 @@ class DocumentsNotifier extends StateNotifier<DocumentsState> {
 final documentsProvider =
     StateNotifierProvider<DocumentsNotifier, DocumentsState>((ref) {
   ref.watch(authProvider.select((s) => s.user?.id));
-  return DocumentsNotifier(ref.read(apiClientProvider));
+  return DocumentsNotifier(ref.read(apiClientProvider), ref);
 });

@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_strings.dart';
 import '../../shared/widgets/password_field.dart';
+import '../../shared/widgets/storage_usage_card.dart';
 import '../auth/auth_provider.dart';
 
 class ProfileScreen extends ConsumerWidget {
@@ -35,6 +36,8 @@ class ProfileScreen extends ConsumerWidget {
             _SkillChips(skills: user.skills!),
             const SizedBox(height: 16),
           ],
+          const StorageUsageCard(compact: true),
+          const SizedBox(height: 16),
           _PersonalDetailsSection(user: user),
           const SizedBox(height: 16),
           _ProfessionalSection(user: user),
