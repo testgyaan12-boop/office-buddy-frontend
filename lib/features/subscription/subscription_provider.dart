@@ -69,6 +69,7 @@ class SubscriptionInfo {
   final String currency;
   final String? razorpayKeyId;
   final String? expiryDate;
+  final String paymentProvider;
 
   SubscriptionInfo({
     required this.planCode,
@@ -79,6 +80,7 @@ class SubscriptionInfo {
     required this.currency,
     this.razorpayKeyId,
     this.expiryDate,
+    this.paymentProvider = 'razorpay',
   });
 
   factory SubscriptionInfo.fromJson(Map<String, dynamic> j) => SubscriptionInfo(
@@ -90,6 +92,7 @@ class SubscriptionInfo {
         currency: j['currency'] as String? ?? 'INR',
         razorpayKeyId: j['razorpayKeyId'] as String?,
         expiryDate: j['expiryDate'] as String?,
+        paymentProvider: (j['paymentProvider'] as String?)?.toLowerCase() ?? 'razorpay',
       );
 }
 

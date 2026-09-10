@@ -53,6 +53,17 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
       );
       return;
     }
+    final provider = order.paymentProvider;
+    if (provider != 'razorpay') {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${provider.isEmpty ? 'This' : provider[0].toUpperCase() + provider.substring(1)} payments coming soon. Razorpay is the active gateway.'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+      return;
+    }
     final keyId = order.razorpayKeyId ?? '';
     final orderId = order.razorpayOrderId ?? '';
     if (keyId.isEmpty || keyId == 'rzp_test_dummy' || orderId.startsWith('order_mock_')) {
