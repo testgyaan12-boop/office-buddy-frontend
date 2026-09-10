@@ -72,6 +72,9 @@ class ApiEndpoints {
   static const String reminderHistory = '/reminders/history';
   static const String storageQuota = '/storage/quota/me';
 
+  static const String adsConfig = '/ads/config';
+  static const String adsLog = '/ads/log';
+
   static const String plans = '/plans';
   static const String subCurrent = '/subscriptions/me';
   static const String subCreateOrder = '/subscriptions/create-order';

@@ -1,6 +1,8 @@
+import 'package:flutter/foundation.dart' show defaultTargetPlatform, kIsWeb, kReleaseMode, TargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_strings.dart';
 import '../../shared/widgets/app_card.dart';
@@ -8,6 +10,7 @@ import '../../shared/widgets/date_badge.dart';
 import '../../shared/widgets/error_state.dart';
 import '../../shared/widgets/loading_shimmer.dart';
 import '../../shared/widgets/main_shell.dart';
+import '../ads/ads_provider.dart';
 import '../documents/documents_provider.dart';
 import '../documents/models/document_model.dart';
 import '../timeline/timeline_provider.dart';
@@ -22,7 +25,10 @@ class DashboardTab extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(dashboardProvider);
     return RefreshIndicator(
-      onRefresh: () => ref.read(dashboardProvider.notifier).loadDashboard(),
+      onRefresh: () => Future.wait([
+        ref.read(dashboardProvider.notifier).loadDashboard(),
+        ref.read(adsProvider.notifier).loadHomeAd(),
+      ]),
       child: state.isLoading
           ? const CardShimmer()
           : state.error != null
@@ -343,6 +349,8 @@ class _DashboardContent extends StatelessWidget {
               ),
             ),
           ),
+        const SizedBox(height: 8),
+        const _HomeAdCard(),
       ],
     );
   }
@@ -516,6 +524,165 @@ class _StatItem extends StatelessWidget {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _HomeAdCard extends ConsumerStatefulWidget {
+  const _HomeAdCard();
+
+  @override
+  ConsumerState<_HomeAdCard> createState() => _HomeAdCardState();
+}
+
+class _HomeAdCardState extends ConsumerState<_HomeAdCard> {
+  static const _androidTestUnit = 'ca-app-pub-3940256099942544/6300978111';
+  static const _iosTestUnit = 'ca-app-pub-3940256099942544/2934735716';
+
+  BannerAd? _bannerAd;
+  bool _loaded = false;
+  String? _unitId;
+
+  @override
+  void dispose() {
+    _bannerAd?.dispose();
+    super.dispose();
+  }
+
+  void _ensureAd(AdConfigModel ad) {
+    final unit = kReleaseMode && ad.adUnitId.isNotEmpty
+        ? ad.adUnitId
+        : (defaultTargetPlatform == TargetPlatform.iOS ? _iosTestUnit : _androidTestUnit);
+    if (_bannerAd != null) {
+      if (_unitId == unit) return;
+      _bannerAd?.dispose();
+      _bannerAd = null;
+      _loaded = false;
+    }
+    _unitId = unit;
+    _bannerAd = BannerAd(
+      size: AdSize.banner,
+      adUnitId: unit,
+      listener: BannerAdListener(
+        onAdLoaded: (_) {
+          if (mounted) setState(() => _loaded = true);
+        },
+        onAdFailedToLoad: (_, __) {
+          if (mounted) setState(() => _loaded = false);
+        },
+      ),
+      request: const AdRequest(),
+    )..load();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ad = ref.watch(adsProvider);
+    if (ad == null) return const SizedBox.shrink();
+    if (kIsWeb) return _placeholder(ad);
+    _ensureAd(ad);
+    if (!_loaded || _bannerAd == null) return _placeholder(ad);
+    final banner = _bannerAd!;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: AppCard(
+        margin: EdgeInsets.zero,
+        padding: EdgeInsets.zero,
+        child: Column(
+          children: [
+            Container(
+              alignment: Alignment.center,
+              width: banner.size.width.toDouble(),
+              height: banner.size.height.toDouble(),
+              child: AdWidget(ad: banner),
+            ),
+            const Padding(
+              padding: EdgeInsets.only(bottom: 4),
+              child: Text(
+                'AD',
+                style: TextStyle(
+                  color: AppColors.textLight,
+                  fontSize: 9,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _placeholder(AdConfigModel ad) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: AppCard(
+        margin: EdgeInsets.zero,
+        padding: EdgeInsets.zero,
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppColors.accent.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(
+                  Icons.campaign_rounded,
+                  color: AppColors.accent,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            ad.providerName.isEmpty ? 'Sponsored' : ad.providerName,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: AppColors.accent.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: const Text(
+                            'AD',
+                            style: TextStyle(
+                              color: AppColors.accent,
+                              fontSize: 9,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${ad.placement} • ${ad.adType}',
+                      style: const TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
