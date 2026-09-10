@@ -71,4 +71,11 @@ class ApiEndpoints {
   static const String reminders = '/reminders';
   static const String reminderHistory = '/reminders/history';
   static const String storageQuota = '/storage/quota/me';
+
+  static const String plans = '/plans';
+  static const String subCurrent = '/subscriptions/me';
+  static const String subCreateOrder = '/subscriptions/create-order';
+  static const String subVerify = '/subscriptions/verify';
+  static const String invoicesMe = '/invoices/me';
+  static String invoicePdf(String id) => '/invoices/$id/pdf';
 }

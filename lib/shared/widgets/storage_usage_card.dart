@@ -15,18 +15,23 @@ class StorageUsageCard extends ConsumerWidget {
     if (compact) {
       if (q == null) {
         if (state.isLoading) {
-          return Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [BoxShadow(color: AppColors.cardShadow, blurRadius: 8, offset: const Offset(0, 2))],
-              border: Border.all(color: AppColors.primary.withValues(alpha: 0.12)),
+          return GestureDetector(
+            onTap: () => context.push('/subscriptions'),
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [BoxShadow(color: AppColors.cardShadow, blurRadius: 8, offset: const Offset(0, 2))],
+                border: Border.all(color: AppColors.primary.withValues(alpha: 0.12)),
+              ),
+              child: const SizedBox(height: 44, child: Center(child: CircularProgressIndicator(strokeWidth: 2))),
             ),
-            child: const SizedBox(height: 44, child: Center(child: CircularProgressIndicator(strokeWidth: 2))),
           );
         }
-        return Container(
+        return GestureDetector(
+          onTap: () => context.push('/subscriptions'),
+          child: Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
             color: Colors.white,
@@ -51,11 +56,14 @@ class StorageUsageCard extends ConsumerWidget {
               ),
             ],
           ),
+          ),
         );
       }
       final percent = q.usagePercentage.clamp(0, 100) / 100.0;
       final isFull = q.usagePercentage >= 90;
-      return Container(
+      return GestureDetector(
+        onTap: () => context.push('/subscriptions'),
+        child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: Colors.white,
@@ -103,6 +111,7 @@ class StorageUsageCard extends ConsumerWidget {
               ),
             ),
           ],
+        ),
         ),
       );
     }

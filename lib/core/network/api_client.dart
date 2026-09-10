@@ -113,6 +113,14 @@ class ApiClient {
   Future<Response> downloadFile(String url, String savePath) =>
       _dio.download(url, savePath);
 
+  Future<Uint8List> downloadBytes(String url) async {
+    final r = await _dio.get<List<int>>(
+      url,
+      options: Options(responseType: ResponseType.bytes),
+    );
+    return Uint8List.fromList(r.data ?? []);
+  }
+
   Future<Response> uploadFile(
     String path, {
     required Uint8List fileBytes,

@@ -18,6 +18,7 @@ import '../../features/applock/app_lock_screen.dart';
 import '../../features/applock/unlock_screen.dart';
 import '../../features/profile/profile_edit_screen.dart';
 import '../../features/profile/profile_screen.dart';
+import '../../features/subscription/subscription_screen.dart';
 import '../../features/todo/goals_screen.dart';
 import '../../features/todo/todos_screen.dart';
 import '../../shared/widgets/main_shell.dart';
@@ -139,6 +140,10 @@ class AppRouter {
           GoRoute(
             path: 'reminders',
             builder: (_, __) => const RemindersScreen(),
+          ),
+          GoRoute(
+            path: 'subscriptions',
+            builder: (_, __) => const SubscriptionScreen(),
           ),
         ],
       ),
