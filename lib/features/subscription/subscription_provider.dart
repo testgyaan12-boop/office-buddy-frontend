@@ -14,10 +14,10 @@ String formatBytes(int bytes) {
   return '${(bytes / (1024 * 1024 * 1024)).toStringAsFixed(1)} GB';
 }
 
-String formatAmount(int paise, String currency) {
-  if (paise == 0) return 'Free';
+String formatAmount(num amount, String currency) {
+  if (amount == 0) return 'Free';
   final symbol = currency == 'INR' ? '\u20B9' : '$currency ';
-  final v = paise / 100;
+  final v = amount.toDouble();
   return v == v.truncateToDouble()
       ? '$symbol${v.toStringAsFixed(0)}'
       : '$symbol${v.toStringAsFixed(2)}';
@@ -30,7 +30,7 @@ class PlanInfo {
   final String period;
   final int allocatedBytes;
   final String allocatedUnit;
-  final int amountPaise;
+  final num amount;
   final String currency;
 
   PlanInfo({
@@ -40,7 +40,7 @@ class PlanInfo {
     required this.period,
     required this.allocatedBytes,
     required this.allocatedUnit,
-    required this.amountPaise,
+    required this.amount,
     required this.currency,
   });
 
@@ -51,13 +51,13 @@ class PlanInfo {
         period: j['period'] as String? ?? '',
         allocatedBytes: (j['allocatedBytes'] as num?)?.toInt() ?? 0,
         allocatedUnit: j['allocatedUnit'] as String? ?? '',
-        amountPaise: (j['amountPaise'] as num?)?.toInt() ?? 0,
+        amount: (j['amount'] as num?) ?? 0,
         currency: j['currency'] as String? ?? 'INR',
       );
 
   String get storageLabel => formatBytes(allocatedBytes);
-  String get priceLabel => formatAmount(amountPaise, currency);
-  bool get isFree => amountPaise == 0;
+  String get priceLabel => formatAmount(amount, currency);
+  bool get isFree => amount == 0;
 }
 
 class SubscriptionInfo {
@@ -65,7 +65,7 @@ class SubscriptionInfo {
   final String planName;
   final String status;
   final String? razorpayOrderId;
-  final int amountPaise;
+  final num amount;
   final String currency;
   final String? razorpayKeyId;
   final String? expiryDate;
@@ -76,7 +76,7 @@ class SubscriptionInfo {
     required this.planName,
     required this.status,
     this.razorpayOrderId,
-    required this.amountPaise,
+    required this.amount,
     required this.currency,
     this.razorpayKeyId,
     this.expiryDate,
@@ -88,7 +88,8 @@ class SubscriptionInfo {
         planName: j['planName'] as String? ?? '',
         status: j['status'] as String? ?? '',
         razorpayOrderId: j['razorpayOrderId'] as String?,
-        amountPaise: (j['amountPaise'] as num?)?.toInt() ?? 0,
+        // backend may still send legacy amountPaise during rollout; prefer amount
+        amount: (j['amount'] as num?) ?? (j['amountPaise'] as num?) ?? 0,
         currency: j['currency'] as String? ?? 'INR',
         razorpayKeyId: j['razorpayKeyId'] as String?,
         expiryDate: j['expiryDate'] as String?,
@@ -100,7 +101,7 @@ class InvoiceInfo {
   final String id;
   final String invoiceNo;
   final String planName;
-  final int amountPaise;
+  final num amount;
   final String currency;
   final String status;
   final String? issuedAt;
@@ -110,7 +111,7 @@ class InvoiceInfo {
     required this.id,
     required this.invoiceNo,
     required this.planName,
-    required this.amountPaise,
+    required this.amount,
     required this.currency,
     required this.status,
     this.issuedAt,
@@ -121,14 +122,15 @@ class InvoiceInfo {
         id: j['id'] as String? ?? '',
         invoiceNo: j['invoiceNo'] as String? ?? '',
         planName: j['planName'] as String? ?? '',
-        amountPaise: (j['amountPaise'] as num?)?.toInt() ?? 0,
+        // backend may still send legacy amountPaise during rollout; prefer amount
+        amount: (j['amount'] as num?) ?? (j['amountPaise'] as num?) ?? 0,
         currency: j['currency'] as String? ?? 'INR',
         status: j['status'] as String? ?? '',
         issuedAt: j['issuedAt'] as String?,
         razorpayPaymentId: j['razorpayPaymentId'] as String?,
       );
 
-  String get priceLabel => formatAmount(amountPaise, currency);
+  String get priceLabel => formatAmount(amount, currency);
 }
 
 class SubscriptionState {

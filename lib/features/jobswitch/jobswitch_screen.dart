@@ -10,6 +10,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../core/constants/api_endpoints.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/network/api_client.dart';
+import '../companies/companies_provider.dart';
 import '../subscription/invoice_save_stub.dart'
     if (dart.library.js_interop) '../subscription/invoice_save_web.dart';
 
@@ -134,7 +135,7 @@ class JobSwitchNotifier extends StateNotifier<JobSwitchState> {
     }
   }
 
-  Future<void> generatePack() async {
+  Future<void> generatePack({List<String>? companyIds, String? fromDate, String? toDate}) async {
     final counts = state.selectedCounts;
     final hasAny = counts.values.any((v) => v > 0);
     if (!hasAny) {
@@ -147,9 +148,13 @@ class JobSwitchNotifier extends StateNotifier<JobSwitchState> {
       counts.forEach((k, v) {
         if (v > 0) includeCounts[k] = v;
       });
+      final data = <String, dynamic>{'includeCounts': includeCounts};
+      if (companyIds != null && companyIds.isNotEmpty) data['companyIds'] = companyIds;
+      if (fromDate != null) data['fromDate'] = fromDate;
+      if (toDate != null) data['toDate'] = toDate;
       final response = await _apiClient.post(
         ApiEndpoints.jobSwitchGenerate,
-        data: {'includeCounts': includeCounts},
+        data: data,
       );
       state = JobSwitchState(
         isGenerating: false,
@@ -312,15 +317,31 @@ class _JobSwitchScreenState extends ConsumerState<JobSwitchScreen> {
     );
   }
 
+  String _apiDate(DateTime d) =>
+      '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+
+  String _showDate(DateTime d) =>
+      '${d.day.toString().padLeft(2, '0')}-${d.month.toString().padLeft(2, '0')}-${d.year}';
+
   void _showCustomPackPopup(BuildContext context) {
+    final selectedCompanies = <String>{};
+    DateTime? fromDate;
+    DateTime? toDate;
+    Future.microtask(() {
+      try {
+        ref.read(companiesProvider.notifier).loadCompanies();
+      } catch (_) {}
+    });
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (ctx) => Consumer(
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx3, setSheet) => Consumer(
         builder: (ctx2, ref2, _) {
           final selState = ref2.watch(jobSwitchProvider);
+          final companies = ref2.watch(companiesProvider).companies;
           return Padding(
             padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom, left: 20, right: 20, top: 20),
             child: SingleChildScrollView(
@@ -349,6 +370,97 @@ class _JobSwitchScreenState extends ConsumerState<JobSwitchScreen> {
                   _FolderSelector(folder: 'Joining Letters', types: const ['JOINING_LETTER'], icon: Icons.how_to_reg),
                   _FolderSelector(folder: 'Offer Letters', types: const ['OFFER_LETTER', 'CONFIRMATION_LETTER'], icon: Icons.card_membership),
                   _FolderSelector(folder: 'Increment Letters', types: const ['INCREMENT_LETTER'], icon: Icons.trending_up),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      const Text('Companies', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800)),
+                      const SizedBox(width: 8),
+                      Text(
+                        selectedCompanies.isEmpty ? '(all)' : '(${selectedCompanies.length} selected)',
+                        style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                      ),
+                      const Spacer(),
+                      if (selectedCompanies.isNotEmpty)
+                        TextButton(
+                          onPressed: () => setSheet(() => selectedCompanies.clear()),
+                          child: const Text('Clear', style: TextStyle(fontSize: 12)),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  if (companies.isEmpty)
+                    const Text('No companies found — all companies will be included', style: TextStyle(fontSize: 12, color: AppColors.textSecondary))
+                  else
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: companies.map((c) {
+                        final selected = selectedCompanies.contains(c.id);
+                        return FilterChip(
+                          selected: selected,
+                          onSelected: (_) => setSheet(() {
+                            if (selected) {
+                              selectedCompanies.remove(c.id);
+                            } else {
+                              selectedCompanies.add(c.id);
+                            }
+                          }),
+                          label: Text(c.name, style: const TextStyle(fontSize: 12)),
+                          selectedColor: const Color(0xFF6366F1),
+                          checkmarkColor: Colors.white,
+                          labelStyle: TextStyle(
+                            color: selected ? Colors.white : const Color(0xFF6366F1),
+                            fontWeight: FontWeight.w600,
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  const SizedBox(height: 16),
+                  const Text('Date Range', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800)),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: () async {
+                            final picked = await showDatePicker(
+                              context: ctx3,
+                              initialDate: fromDate ?? DateTime.now(),
+                              firstDate: DateTime(2000),
+                              lastDate: DateTime.now(),
+                            );
+                            if (picked != null) setSheet(() => fromDate = picked);
+                          },
+                          icon: const Icon(Icons.event, size: 16),
+                          label: Text(fromDate == null ? 'From date' : _showDate(fromDate!), style: const TextStyle(fontSize: 12)),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: () async {
+                            final picked = await showDatePicker(
+                              context: ctx3,
+                              initialDate: toDate ?? DateTime.now(),
+                              firstDate: DateTime(2000),
+                              lastDate: DateTime.now().add(const Duration(days: 365)),
+                            );
+                            if (picked != null) setSheet(() => toDate = picked);
+                          },
+                          icon: const Icon(Icons.event, size: 16),
+                          label: Text(toDate == null ? 'To date' : _showDate(toDate!), style: const TextStyle(fontSize: 12)),
+                        ),
+                      ),
+                      if (fromDate != null || toDate != null)
+                        IconButton(
+                          onPressed: () => setSheet(() {
+                            fromDate = null;
+                            toDate = null;
+                          }),
+                          icon: const Icon(Icons.clear, size: 18),
+                        ),
+                    ],
+                  ),
                   const SizedBox(height: 12),
                   Container(
                     padding: const EdgeInsets.all(12),
@@ -362,7 +474,11 @@ class _JobSwitchScreenState extends ConsumerState<JobSwitchScreen> {
                       onPressed: selState.isGenerating
                           ? null
                           : () async {
-                              await ref2.read(jobSwitchProvider.notifier).generatePack();
+                              await ref2.read(jobSwitchProvider.notifier).generatePack(
+                                    companyIds: selectedCompanies.toList(),
+                                    fromDate: fromDate != null ? _apiDate(fromDate!) : null,
+                                    toDate: toDate != null ? _apiDate(toDate!) : null,
+                                  );
                               if (ctx.mounted) Navigator.pop(ctx);
                               if (selState.downloadUrl != null && context.mounted) {
                                 // keep on main screen to show download button
@@ -380,6 +496,7 @@ class _JobSwitchScreenState extends ConsumerState<JobSwitchScreen> {
             ),
           );
         },
+        ),
       ),
     );
   }
