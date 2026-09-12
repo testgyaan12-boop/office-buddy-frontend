@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:typed_data';
+import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -7,6 +10,8 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../core/constants/api_endpoints.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/network/api_client.dart';
+import '../subscription/invoice_save_stub.dart'
+    if (dart.library.js_interop) '../subscription/invoice_save_web.dart';
 
 class JobSwitchState {
   final bool isLoading;
@@ -160,20 +165,29 @@ class JobSwitchNotifier extends StateNotifier<JobSwitchState> {
     }
   }
 
-  Future<String?> recordDownload(String packId) async {
-    state = state.copyWith(isDownloading: true);
+  Future<Uint8List?> fetchPackPdf(String packId) async {
+    state = state.copyWith(isDownloading: true, error: null);
     try {
-      final res = await _apiClient.post('${ApiEndpoints.jobSwitchDownload}$packId');
-      final url = res.data['downloadUrl'] as String?;
+      final bytes = await _apiClient.downloadBytes(ApiEndpoints.jobSwitchPackPdf(packId));
       state = state.copyWith(isDownloading: false);
       await fetchDownloadDetails();
-      return url;
+      return bytes;
     } catch (e) {
-      String msg = 'Download failed';
-      if (e.toString().contains('Free download limit')) msg = 'Free limit reached — upgrade to paid plan';
-      state = state.copyWith(isDownloading: false, error: msg);
+      state = state.copyWith(isDownloading: false, error: _downloadError(e));
       return null;
     }
+  }
+
+  String _downloadError(Object e) {
+    try {
+      final d = (e as DioException).response?.data;
+      if (d is Map && d['message'] is String && (d['message'] as String).isNotEmpty) {
+        final m = d['message'] as String;
+        if (m.contains('Free download limit')) return 'Free limit reached — upgrade to paid plan';
+        return m;
+      }
+    } catch (_) {}
+    return 'Download failed';
   }
 
   Future<void> fetchDownloadDetails() async {
@@ -187,6 +201,37 @@ class JobSwitchNotifier extends StateNotifier<JobSwitchState> {
 
 final jobSwitchProvider = StateNotifierProvider<JobSwitchNotifier, JobSwitchState>((ref) {
   return JobSwitchNotifier(ref.read(apiClientProvider));
+});
+
+class CustomAd {
+  final int id;
+  final String title;
+  final String productImgLink;
+  final String productOpenLink;
+
+  const CustomAd({
+    required this.id,
+    required this.title,
+    required this.productImgLink,
+    required this.productOpenLink,
+  });
+
+  factory CustomAd.fromJson(Map<String, dynamic> j) => CustomAd(
+        id: (j['id'] as num?)?.toInt() ?? 0,
+        title: j['title'] as String? ?? '',
+        productImgLink: j['productImgLink'] as String? ?? '',
+        productOpenLink: j['productOpenLink'] as String? ?? '',
+      );
+}
+
+final customAdsProvider = FutureProvider.autoDispose<List<CustomAd>>((ref) async {
+  try {
+    final r = await ref.read(apiClientProvider).get(ApiEndpoints.customAds);
+    if (r.data is! List) return const [];
+    return (r.data as List).map((e) => CustomAd.fromJson(e as Map<String, dynamic>)).toList();
+  } catch (_) {
+    return const [];
+  }
 });
 
 class JobSwitchScreen extends ConsumerStatefulWidget {
@@ -206,14 +251,13 @@ class _JobSwitchScreenState extends ConsumerState<JobSwitchScreen> {
   Future<void> _downloadPack() async {
     final state = ref.read(jobSwitchProvider);
     final packId = state.packId;
-    final url = state.downloadUrl;
-    if (packId == null || url == null) return;
+    if (packId == null) return;
 
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Download Pack'),
-        content: const Text('Download the Job Switch Pack ZIP file? This will be logged.'),
+        content: const Text('Download all documents as a single PDF file? This will be logged.'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
           ElevatedButton(
@@ -225,25 +269,47 @@ class _JobSwitchScreenState extends ConsumerState<JobSwitchScreen> {
     );
     if (confirmed != true) return;
 
-    // Record download (row-wise) — creates job_switch_pack_download_details row
-    final trackedUrl = await ref.read(jobSwitchProvider.notifier).recordDownload(packId);
-    final effectiveUrl = trackedUrl ?? url;
-
     try {
-      final fullUrl = effectiveUrl.startsWith('http') ? effectiveUrl : '${ApiEndpoints.baseUrl.replaceAll('/api/v1', '')}$effectiveUrl';
       if (kIsWeb) {
-        await launchUrl(Uri.parse(fullUrl), mode: LaunchMode.platformDefault);
+        final bytes = await ref.read(jobSwitchProvider.notifier).fetchPackPdf(packId);
+        if (bytes == null) throw Exception(ref.read(jobSwitchProvider).error ?? 'Download failed');
+        await savePdfInBrowser(bytes, 'job-switch-pack.pdf');
       } else {
         final dir = await getTemporaryDirectory();
-        final filePath = '${dir.path}/job_switch_pack.zip';
-        await ref.read(apiClientProvider).downloadFile(fullUrl, filePath);
+        final filePath = '${dir.path}/job-switch-pack.pdf';
+        await ref.read(apiClientProvider).downloadFile(ApiEndpoints.jobSwitchPackPdf(packId), filePath);
+        await ref.read(jobSwitchProvider.notifier).fetchDownloadDetails();
         if (mounted) await OpenFilex.open(filePath);
       }
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Downloaded successfully')));
     } catch (e) {
       debugPrint('_downloadPack error: $e');
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Download failed: $e')));
+      if (mounted) {
+        final msg = ref.read(jobSwitchProvider).error ?? 'Download failed: $e';
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+      }
     }
+  }
+
+  Widget _buildHeaderCard() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(32),
+      decoration: BoxDecoration(
+        gradient: AppColors.accentGradient,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [BoxShadow(color: AppColors.accent.withValues(alpha: 0.3), blurRadius: 16, offset: const Offset(0, 6))],
+      ),
+      child: Column(
+        children: [
+          const Icon(Icons.swap_horiz, size: 64, color: Colors.white),
+          const SizedBox(height: 16),
+          const Text('Job Switch Pack', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white)),
+          const SizedBox(height: 8),
+          Text('Bundle all your documents for a smooth job switch', style: TextStyle(color: Colors.white.withValues(alpha: 0.85), fontSize: 14), textAlign: TextAlign.center),
+        ],
+      ),
+    );
   }
 
   void _showCustomPackPopup(BuildContext context) {
@@ -329,23 +395,10 @@ class _JobSwitchScreenState extends ConsumerState<JobSwitchScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(32),
-              decoration: BoxDecoration(
-                gradient: AppColors.accentGradient,
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [BoxShadow(color: AppColors.accent.withValues(alpha: 0.3), blurRadius: 16, offset: const Offset(0, 6))],
-              ),
-              child: Column(
-                children: [
-                  const Icon(Icons.swap_horiz, size: 64, color: Colors.white),
-                  const SizedBox(height: 16),
-                  const Text('Job Switch Pack', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white)),
-                  const SizedBox(height: 8),
-                  Text('Bundle all your documents for a smooth job switch', style: TextStyle(color: Colors.white.withValues(alpha: 0.85), fontSize: 14), textAlign: TextAlign.center),
-                ],
-              ),
+            ref.watch(customAdsProvider).when(
+              data: (ads) => ads.isEmpty ? _buildHeaderCard() : _AdCarousel(ads: ads),
+              loading: () => _buildHeaderCard(),
+              error: (_, __) => _buildHeaderCard(),
             ),
             const SizedBox(height: 24),
             const Text('This pack includes:', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
@@ -394,8 +447,8 @@ class _JobSwitchScreenState extends ConsumerState<JobSwitchScreen> {
                 width: double.infinity,
                 child: OutlinedButton.icon(
                   onPressed: state.isDownloading ? null : _downloadPack,
-                  icon: state.isDownloading ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.download),
-                  label: Text(state.isDownloading ? 'Downloading...' : 'Download ZIP (Logged)'),
+                  icon: state.isDownloading ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.picture_as_pdf_rounded),
+                  label: Text(state.isDownloading ? 'Downloading...' : 'Download PDF'),
                   style: OutlinedButton.styleFrom(foregroundColor: AppColors.primary, side: const BorderSide(color: AppColors.primary), padding: const EdgeInsets.symmetric(vertical: 16)),
                 ),
               ),
@@ -487,6 +540,178 @@ class _FolderSelector extends ConsumerWidget {
               IconButton(icon: const Icon(Icons.add_circle_outline, size: 20, color: Color(0xFF6366F1)), onPressed: currentCount >= 20 ? null : () { for (final t in types) ref.read(jobSwitchProvider.notifier).setCount(t, currentCount + 1); }),
             ] else
               const Text('Off', style: TextStyle(fontSize: 11, color: Colors.grey)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _AdCarousel extends StatefulWidget {
+  final List<CustomAd> ads;
+
+  const _AdCarousel({required this.ads});
+
+  @override
+  State<_AdCarousel> createState() => _AdCarouselState();
+}
+
+class _AdCarouselState extends State<_AdCarousel> {
+  late final PageController _pageController;
+  Timer? _timer;
+  int _current = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _pageController = PageController(viewportFraction: 0.92);
+    if (widget.ads.length > 1) {
+      _timer = Timer.periodic(const Duration(seconds: 4), (_) {
+        if (!mounted || !_pageController.hasClients) return;
+        final next = (_current + 1) % widget.ads.length;
+        _pageController.animateToPage(
+          next,
+          duration: const Duration(milliseconds: 400),
+          curve: Curves.easeInOut,
+        );
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _openAd(CustomAd ad) async {
+    if (ad.productOpenLink.isEmpty) return;
+    final uri = Uri.tryParse(ad.productOpenLink);
+    if (uri == null) return;
+    try {
+      final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (!ok && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not open link')));
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not open link')));
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        SizedBox(
+          height: 190,
+          child: PageView.builder(
+            controller: _pageController,
+            itemCount: widget.ads.length,
+            onPageChanged: (i) => setState(() => _current = i),
+            itemBuilder: (context, index) {
+              final ad = widget.ads[index];
+              return Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: GestureDetector(
+                  onTap: () => _openAd(ad),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(20),
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        if (ad.productImgLink.isNotEmpty)
+                          Image.network(
+                            ad.productImgLink,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => _fallbackTile(ad),
+                          )
+                        else
+                          _fallbackTile(ad),
+                        Positioned(
+                          left: 0,
+                          right: 0,
+                          bottom: 0,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [Colors.transparent, Colors.black.withValues(alpha: 0.7)],
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    ad.title,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w700),
+                                  ),
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                  decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.25), borderRadius: BorderRadius.circular(6)),
+                                  child: const Text('AD', style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w700)),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+        if (widget.ads.length > 1) ...[
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: List.generate(
+              widget.ads.length,
+              (i) => AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                margin: const EdgeInsets.symmetric(horizontal: 3),
+                width: _current == i ? 20 : 7,
+                height: 7,
+                decoration: BoxDecoration(
+                  color: _current == i ? AppColors.primary : AppColors.textLight.withValues(alpha: 0.4),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _fallbackTile(CustomAd ad) {
+    return Container(
+      decoration: BoxDecoration(gradient: AppColors.accentGradient),
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.campaign_rounded, size: 48, color: Colors.white),
+            const SizedBox(height: 8),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Text(
+                ad.title,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700),
+              ),
+            ),
           ],
         ),
       ),

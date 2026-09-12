@@ -45,6 +45,8 @@ class ApiEndpoints {
   static const String timelineEvents = '/timeline/events';
 
   static const String jobSwitchGenerate = '/job-switch/generate';
+  static const String customAds = '/custom-ads';
+  static String jobSwitchPackPdf(String packId) => '/job-switch/pack/$packId/pdf';
   static const String jobSwitchStatus = '/job-switch/status/';
   static const String jobSwitchDownload = '/job-switch/download/';
   static const String jobSwitchPackDownloadDetails = '/job-switch/pack-download-details';
