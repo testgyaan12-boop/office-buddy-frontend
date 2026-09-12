@@ -133,7 +133,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   ),
                   _StatItem(
                     icon: Icons.work_history,
-                    value: '${stats.experienceYears}y',
+                    value: stats.experienceLabel,
                     label: 'Experience',
                   ),
                 ],

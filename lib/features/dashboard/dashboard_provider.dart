@@ -8,12 +8,14 @@ class DashboardStats {
   final int totalDocuments;
   final int totalCompanies;
   final int experienceYears;
+  final int experienceMonths;
   final int totalCertificates;
 
   const DashboardStats({
     this.totalDocuments = 0,
     this.totalCompanies = 0,
     this.experienceYears = 0,
+    this.experienceMonths = 0,
     this.totalCertificates = 0,
   });
 
@@ -21,8 +23,17 @@ class DashboardStats {
         totalDocuments: json['totalDocuments'] as int? ?? 0,
         totalCompanies: json['totalCompanies'] as int? ?? 0,
         experienceYears: json['experienceYears'] as int? ?? 0,
+        experienceMonths: json['experienceMonths'] as int? ?? 0,
         totalCertificates: json['totalCertificates'] as int? ?? 0,
       );
+
+  String get experienceLabel {
+    if (experienceYears > 0 && experienceMonths > 0) {
+      return '${experienceYears}y ${experienceMonths}m';
+    }
+    if (experienceYears > 0) return '${experienceYears}y';
+    return '${experienceMonths}m';
+  }
 }
 
 class DashboardState {

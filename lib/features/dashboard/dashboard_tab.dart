@@ -84,7 +84,7 @@ class _DashboardContent extends StatelessWidget {
             Expanded(
               child: _StatItem(
                 icon: Icons.work_history,
-                value: '${stats.experienceYears}y',
+                value: stats.experienceLabel,
                 label: 'Experience',
                 color: AppColors.success,
               ),

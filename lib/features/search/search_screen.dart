@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/constants/api_endpoints.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/network/api_client.dart';
+import '../../shared/widgets/app_card.dart';
 import '../../shared/widgets/date_badge.dart';
 import '../../shared/widgets/loading_shimmer.dart';
 import '../documents/lookup_provider.dart';
@@ -343,102 +344,82 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                           final doc = state.results[index];
                           final docColor = _docColor(doc.type);
                           return Padding(
-                            padding: const EdgeInsets.only(bottom: 10),
-                              child: GestureDetector(
+                            padding: const EdgeInsets.only(bottom: 8),
+                            child: AppCard(
                               onTap: () => context.push('/documents/preview/${doc.id}'),
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(14),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: AppColors.cardShadow,
-                                      blurRadius: 6,
-                                      offset: const Offset(0, 2),
-                                    ),
-                                  ],
-                                ),
-                                child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(14),
-                                  child: Row(
-                                    children: [
-                                      Container(width: 4, height: 76, color: docColor),
-                                      const SizedBox(width: 12),
-                                      Container(
-                                        padding: const EdgeInsets.all(10),
-                                        decoration: BoxDecoration(
-                                          color: docColor.withOpacity(0.1),
-                                          borderRadius: BorderRadius.circular(10),
-                                        ),
-                                        child: Icon(_docIcon(doc.type), color: docColor, size: 22),
+                              margin: EdgeInsets.zero,
+                              padding: EdgeInsets.zero,
+                              child: Padding(
+                                padding: const EdgeInsets.all(12),
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(8),
+                                      decoration: BoxDecoration(
+                                        color: docColor.withOpacity(0.1),
+                                        borderRadius: BorderRadius.circular(8),
                                       ),
-                                      const SizedBox(width: 12),
-                                      Expanded(
-                                        child: Padding(
-                                          padding: const EdgeInsets.symmetric(vertical: 12),
-                                          child: Column(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                      child: Icon(
+                                        _docIcon(doc.type),
+                                        color: docColor,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Row(
                                             children: [
-                                              Row(
-                                                children: [
-                                                  Expanded(
-                                                    child: Text(
-                                                      doc.title,
-                                                      style: const TextStyle(
-                                                        fontWeight: FontWeight.w600,
-                                                        fontSize: 14,
-                                                        color: AppColors.textPrimary,
-                                                      ),
-                                                      maxLines: 1,
-                                                      overflow: TextOverflow.ellipsis,
-                                                    ),
+                                              Expanded(
+                                                child: Text(
+                                                  doc.title,
+                                                  style: const TextStyle(
+                                                    fontWeight: FontWeight.w600,
+                                                    fontSize: 14,
                                                   ),
-                                                  Container(
-                                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                                    decoration: BoxDecoration(
-                                                      color: docColor.withOpacity(0.1),
-                                                      borderRadius: BorderRadius.circular(6),
-                                                    ),
-                                                    child: Text(
-                                                      doc.type.replaceAll('_', ' '),
-                                                      style: TextStyle(
-                                                        color: docColor,
-                                                        fontSize: 9,
-                                                        fontWeight: FontWeight.w600,
-                                                      ),
-                                                    ),
-                                                  ),
-                                                  const SizedBox(width: 4),
-                                                ],
+                                                ),
                                               ),
-                                              const SizedBox(height: 6),
-                                              Row(
-                                                children: [
-                                                  Icon(Icons.business, size: 12, color: AppColors.textLight),
-                                                  const SizedBox(width: 4),
-                                                  Expanded(
-                                                    child: Text(
-                                                      doc.companyName ?? 'No company',
-                                                      style: const TextStyle(
-                                                        color: AppColors.textLight,
-                                                        fontSize: 12,
-                                                      ),
-                                                    ),
+                                              Container(
+                                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                                decoration: BoxDecoration(
+                                                  color: docColor.withOpacity(0.1),
+                                                  borderRadius: BorderRadius.circular(6),
+                                                ),
+                                                child: Text(
+                                                  doc.type.replaceAll('_', ' '),
+                                                  style: TextStyle(
+                                                    color: docColor,
+                                                    fontSize: 9,
+                                                    fontWeight: FontWeight.w600,
                                                   ),
-                                                  if (doc.hasDocumentDate) ...[
-                                                    DateBadge('RecievedAt ${doc.formattedRecievedAt}', icon: Icons.event, color: AppColors.accent, fontSize: 8),
-                                                    const SizedBox(width: 4),
-                                                  ],
-                                                  DateBadge('UploadAt ${doc.formattedUploadAt}', icon: Icons.cloud_upload, fontSize: 8),
-                                                ],
+                                                ),
                                               ),
                                             ],
                                           ),
-                                        ),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            doc.companyName ?? '',
+                                            style: const TextStyle(
+                                              color: AppColors.textSecondary,
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 6),
+                                          Row(
+                                            children: [
+                                              if (doc.hasDocumentDate) ...[
+                                                DateBadge('RecievedAt ${doc.formattedRecievedAt}', icon: Icons.event, color: AppColors.accent, fontSize: 8),
+                                                const SizedBox(width: 4),
+                                              ],
+                                              DateBadge('UploadAt ${doc.formattedUploadAt}', icon: Icons.cloud_upload, fontSize: 8),
+                                            ],
+                                          ),
+                                        ],
                                       ),
-                                      const SizedBox(width: 8),
-                                    ],
-                                  ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ),

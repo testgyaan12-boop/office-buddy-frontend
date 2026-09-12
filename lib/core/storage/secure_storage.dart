@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 final secureStorageProvider = Provider<SecureStorage>((ref) {
   return SecureStorage();
@@ -165,12 +166,25 @@ class SecureStorage {
     }
   }
 
-  Future<void> setOnboardingSeen() =>
-      _storage.write(key: _onboardingSeen, value: 'true');
+  Future<void> setOnboardingSeen() async {
+    await _storage.write(key: _onboardingSeen, value: 'true');
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_onboardingSeen, true);
+    } catch (_) {}
+  }
 
   Future<bool> hasSeenOnboarding() async {
     final val = await _storage.read(key: _onboardingSeen);
-    return val == 'true';
+    if (val == 'true') return true;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (prefs.getBool(_onboardingSeen) == true) {
+        await _storage.write(key: _onboardingSeen, value: 'true');
+        return true;
+      }
+    } catch (_) {}
+    return false;
   }
 
   Future<void> clearAll() async {
