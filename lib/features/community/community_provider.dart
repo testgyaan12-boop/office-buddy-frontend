@@ -241,10 +241,18 @@ class CommunityNotifier extends StateNotifier<CommunityState> {
 
   void startMessagePolling(String conversationId) {
     _messageTimer?.cancel();
+    markAsRead(conversationId);
     loadMessages(conversationId);
     _messageTimer = Timer.periodic(const Duration(seconds: 3), (_) {
       loadMessages(conversationId);
     });
+  }
+
+  Future<void> markAsRead(String conversationId) async {
+    try {
+      await _apiClient.put('${ApiEndpoints.conversations}/$conversationId/read');
+      await loadConversations();
+    } catch (_) {}
   }
 
   void stopMessagePolling() {
