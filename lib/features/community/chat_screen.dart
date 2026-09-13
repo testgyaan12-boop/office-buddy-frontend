@@ -1,6 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../shared/widgets/glass_card.dart';
 import '../auth/auth_provider.dart';
 import 'community_provider.dart';
@@ -170,6 +171,47 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     final mine = m.senderId == me;
     final t = _fmt(m.createdAt);
 
+    Widget content() {
+      if (m.isImage && m.fileUrl != null) {
+        return GestureDetector(
+          onTap: () => launchUrl(Uri.parse(m.fileUrl!), mode: LaunchMode.externalApplication),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: Image.network(m.fileUrl!, width: 200, fit: BoxFit.cover,
+              loadingBuilder: (ctx, child, p) => p == null ? child : Container(width: 200, height: 120, alignment: Alignment.center, child: const CircularProgressIndicator(strokeWidth: 2, color: _indigo)),
+              errorBuilder: (ctx, e, s) => Container(width: 200, height: 80, decoration: BoxDecoration(color: _indigo.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(12)), alignment: Alignment.center, child: const Icon(Icons.broken_image_rounded, color: _indigo, size: 28)),
+            ),
+          ),
+        );
+      }
+      if (m.isLink) {
+        final url = m.linkUrl ?? m.content ?? '';
+        return GestureDetector(
+          onTap: () => launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: mine ? Colors.white.withValues(alpha: 0.15) : _violet.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: (mine ? Colors.white : _violet).withValues(alpha: 0.2)),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.link_rounded, size: 16, color: mine ? Colors.white70 : _violet),
+                const SizedBox(width: 6),
+                Flexible(child: Text(url, maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 13, color: mine ? Colors.white70 : _violet, decoration: TextDecoration.underline, height: 1.3))),
+              ],
+            ),
+          ),
+        );
+      }
+      if (m.content != null && m.content!.isNotEmpty) {
+        return Text(m.content!, style: TextStyle(color: mine ? Colors.white : const Color(0xFF0F172A), fontSize: 14, height: 1.35, fontWeight: FontWeight.w500));
+      }
+      return const SizedBox.shrink();
+    }
+
     if (mine) {
       return Align(
         alignment: Alignment.centerRight,
@@ -194,8 +236,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    if (m.content != null && m.content!.isNotEmpty)
-                      Align(alignment: Alignment.centerLeft, child: Text(m.content!, style: const TextStyle(color: Colors.white, fontSize: 14, height: 1.35, fontWeight: FontWeight.w500))),
+                    Align(alignment: Alignment.centerLeft, child: content()),
                     const SizedBox(height: 5),
                     Row(
                       mainAxisSize: MainAxisSize.min,
@@ -249,8 +290,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      if (m.content != null && m.content!.isNotEmpty)
-                        Text(m.content!, style: const TextStyle(color: Color(0xFF0F172A), fontSize: 14, height: 1.35, fontWeight: FontWeight.w500)),
+                      content(),
                       const SizedBox(height: 5),
                       Text(t, style: TextStyle(fontSize: 10, color: Colors.black.withValues(alpha: 0.42), fontWeight: FontWeight.w700)),
                     ],

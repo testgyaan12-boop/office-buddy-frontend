@@ -35,4 +35,6 @@ class MessageModel {
   bool get isMine => false;
   bool get isImage => type == 'IMAGE';
   bool get isFile => type == 'FILE';
+  bool get isLink => type == 'LINK';
+  String? get linkUrl => isLink ? (fileUrl ?? content) : null;
 }

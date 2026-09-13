@@ -83,4 +83,10 @@ class ApiEndpoints {
   static const String subVerify = '/subscriptions/verify';
   static const String invoicesMe = '/invoices/me';
   static String invoicePdf(String id) => '/invoices/$id/pdf';
+
+  static const String groups = '/groups';
+  static String groupMy(String id) => '/groups/$id/is-member';
+  static String groupRequest(String id) => '/groups/$id/request';
+  static String groupMessages(String id) => '/groups/$id/messages';
+  static String groupSendMessage(String id) => '/groups/$id/messages';
 }

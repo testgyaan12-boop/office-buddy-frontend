@@ -7,6 +7,8 @@ import 'package:go_router/go_router.dart';
 import '../../shared/widgets/glass_card.dart';
 import '../auth/auth_provider.dart';
 import 'community_provider.dart';
+import 'group_provider.dart';
+import 'models/group_model.dart';
 import 'models/friend_request_model.dart';
 
 // Industry palette — Indigo / Teal / Violet / Amber
@@ -14,6 +16,7 @@ const _indigo = Color(0xFF6366F1);
 const _teal = Color(0xFF14B8A6);
 const _violet = Color(0xFF8B5CF6);
 const _amber = Color(0xFFF59E0B);
+const _green = Color(0xFF10B981);
 
 const _cardPastels = [
   Color(0xFFFFCDD2),
@@ -108,7 +111,7 @@ class _CommunityTabState extends ConsumerState<CommunityTab> {
     final conversations = state.conversations;
 
     return DefaultTabController(
-      length: 3,
+      length: 4,
       child: Scaffold(
         extendBodyBehindAppBar: true,
         backgroundColor: Colors.transparent,
@@ -165,9 +168,9 @@ class _CommunityTabState extends ConsumerState<CommunityTab> {
           ],
         ),
         body: Stack(
-        children: [
-          const GlassMeshBackground(),
-          SafeArea(
+          children: [
+            const GlassMeshBackground(),
+            SafeArea(
             child: state.isLoading
                 ? const Center(child: CircularProgressIndicator(color: _indigo))
                 : Column(
@@ -196,6 +199,7 @@ class _CommunityTabState extends ConsumerState<CommunityTab> {
                               Tab(text: 'Recent'),
                               Tab(text: 'Request'),
                               Tab(text: 'Connect'),
+                              Tab(text: 'Groups'),
                             ],
                           ),
                         ),
@@ -386,6 +390,8 @@ class _CommunityTabState extends ConsumerState<CommunityTab> {
                                 ],
                               ),
                             ),
+                            // GROUPS TAB
+                            _GroupsTab(),
                           ],
                         ),
                       ),
@@ -1048,5 +1054,187 @@ class _ProfileSheetState extends ConsumerState<_ProfileSheet> {
   }
 }
 
+class _GroupsTab extends ConsumerStatefulWidget {
+  @override
+  ConsumerState<_GroupsTab> createState() => _GroupsTabState();
+}
 
+class _GroupsTabState extends ConsumerState<_GroupsTab> {
+  @override
+  void initState() {
+    super.initState();
+    Future.microtask(() => ref.read(groupProvider.notifier).loadGroups());
+  }
+
+  void _showJoinRequest(String groupId, String groupName) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text('Join $groupName?'),
+        content: const Text('Send a request to join this group. The admin will review your request.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () async {
+              await ref.read(groupProvider.notifier).requestJoin(groupId);
+              if (ctx.mounted) Navigator.pop(ctx);
+              if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Request sent!')));
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: _indigo, foregroundColor: Colors.white),
+            child: const Text('Send Request'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final gs = ref.watch(groupProvider);
+    final allGroups = gs.allGroups;
+    final myGroups = gs.myGroups;
+    final myRequests = gs.myRequests;
+
+    return RefreshIndicator(
+      color: _indigo,
+      onRefresh: () => ref.read(groupProvider.notifier).loadGroups(),
+      child: ListView(
+        padding: const EdgeInsets.only(bottom: 16),
+        children: [
+          // My Groups
+          if (myGroups.isNotEmpty) ...[
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(gradient: const LinearGradient(colors: [_indigo, _violet]), borderRadius: BorderRadius.circular(8)),
+                    child: const Icon(Icons.group_rounded, color: Colors.white, size: 14),
+                  ),
+                  const SizedBox(width: 8),
+                  const Text('My Groups', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: Color(0xFF0F172A), letterSpacing: -0.3)),
+                ],
+              ),
+            ),
+            ...myGroups.map((g) => _groupTile(g, isMember: true)),
+          ],
+          // Pending Requests
+          if (myRequests.isNotEmpty) ...[
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(color: _amber.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(8)),
+                    child: const Icon(Icons.hourglass_top_rounded, color: _amber, size: 14),
+                  ),
+                  const SizedBox(width: 8),
+                  const Text('Pending Requests', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: _amber, letterSpacing: -0.3)),
+                ],
+              ),
+            ),
+            ...myRequests.map((g) => _groupTile(g, isPending: true)),
+          ],
+          // All Groups
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(gradient: const LinearGradient(colors: [_teal, _indigo]), borderRadius: BorderRadius.circular(8)),
+                  child: const Icon(Icons.explore_rounded, color: Colors.white, size: 14),
+                ),
+                const SizedBox(width: 8),
+                const Text('All Groups', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: Color(0xFF0F172A), letterSpacing: -0.3)),
+              ],
+            ),
+          ),
+          if (allGroups.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 36),
+              child: Center(
+                child: GlassCard(
+                  blur: 12, opacity: 0.62, borderRadius: BorderRadius.circular(14),
+                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                  child: const Text('No groups available yet', style: TextStyle(color: Colors.black54, fontSize: 13)),
+                ),
+              ),
+            )
+          else
+            ...allGroups.map((g) => _groupTile(g)),
+        ],
+      ),
+    );
+  }
+
+  Widget _groupTile(GroupModel g, {bool isMember = false, bool isPending = false}) {
+    final colorIdx = g.name.hashCode.abs() % _cardPastels.length;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
+      child: GestureDetector(
+        onTap: isMember
+            ? () => context.push('/group/${g.id}', extra: {'name': g.name})
+            : isPending ? null : () => _showJoinRequest(g.id, g.name),
+        child: GlassCard(
+          blur: 10, opacity: 0.60, borderRadius: BorderRadius.circular(14),
+          padding: const EdgeInsets.all(14),
+          child: Row(
+            children: [
+              Container(
+                width: 44, height: 44,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(colors: [_cardPastels[colorIdx], _cardPastels[colorIdx].withValues(alpha: 0.6)]),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                alignment: Alignment.center,
+                child: Text(g.name[0].toUpperCase(), style: const TextStyle(color: _indigo, fontWeight: FontWeight.w800, fontSize: 18)),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(g.name, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: Color(0xFF0F172A))),
+                    if (g.description != null && g.description!.isNotEmpty)
+                      Text(g.description!, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 12, color: Colors.black.withValues(alpha: 0.5))),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        const Icon(Icons.people_rounded, size: 12, color: Colors.black38),
+                        const SizedBox(width: 4),
+                        Text('${g.memberCount} members', style: const TextStyle(fontSize: 11, color: Colors.black38)),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              if (isMember)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(color: _green.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(8)),
+                  child: const Text('Open', style: TextStyle(color: _green, fontWeight: FontWeight.w700, fontSize: 11)),
+                )
+              else if (isPending)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(color: _amber.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(8)),
+                  child: const Text('Pending', style: TextStyle(color: _amber, fontWeight: FontWeight.w700, fontSize: 11)),
+                )
+              else
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(gradient: const LinearGradient(colors: [_indigo, _violet]), borderRadius: BorderRadius.circular(8)),
+                  child: const Text('Join', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 11)),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
 

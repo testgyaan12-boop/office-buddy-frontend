@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../features/community/chat_screen.dart';
+import '../../features/community/group_chat_screen.dart';
 import '../../features/reminders/reminders_screen.dart';
 import '../../features/splash/splash_screen.dart';
 import '../../features/onboarding/onboarding_screen.dart';
@@ -136,6 +137,16 @@ class AppRouter {
             builder: (_, state) => ChatScreen(
               conversationId: state.pathParameters['id']!,
             ),
+          ),
+          GoRoute(
+            path: 'group/:id',
+            builder: (_, state) {
+              final extras = state.extra as Map<String, dynamic>?;
+              return GroupChatScreen(
+                groupId: state.pathParameters['id']!,
+                groupName: extras?['name'] as String? ?? 'Group',
+              );
+            },
           ),
           GoRoute(
             path: 'reminders',
